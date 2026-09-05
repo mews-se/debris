@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest something Debris should be able to do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Debris finds and removes files. It does not tune, speed up or
+        monitor anything, and it never deletes without showing you the list
+        first. See CONTRIBUTING.md for what fits.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What should the app do
+      description: Describe it from your side, and what you would use it for.
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Where do those files live, if you know
+      description: Paths, app names or bundle identifiers. A new rule is mostly a question of knowing where to look and how to tell the files apart from ones still in use.
+    validations:
+      required: false

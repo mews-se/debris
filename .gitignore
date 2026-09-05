@@ -1,0 +1,7 @@
+Debris.xcodeproj
+.DS_Store
+build/
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate

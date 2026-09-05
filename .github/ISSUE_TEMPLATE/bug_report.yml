@@ -1,0 +1,65 @@
+name: Bug report
+description: Debris flagged something it should not have, missed something, or misbehaved
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The most useful bug reports here are about classification: a file
+        Debris called a leftover that belongs to an app you still have, or
+        a leftover it walked straight past. Paths under your home folder
+        are fine to paste; trim anything you would rather not share.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What Debris did, and what you expected instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Where in the app
+      options:
+        - Uninstall
+        - Leftovers
+        - Clean
+        - Settings or permissions
+        - Somewhere else, or everywhere
+    validations:
+      required: true
+
+  - type: textarea
+    id: paths
+    attributes:
+      label: The paths involved
+      description: The file or folder Debris got wrong, and the app it belongs to if you know.
+    validations:
+      required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Debris version
+      description: Shown in Debris → About Debris.
+      placeholder: 1.0 (1)
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: macOS 15.6
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Whether Full Disk Access was granted, whether the app came from Homebrew, the App Store or a download, and how to reproduce it.
+    validations:
+      required: false
