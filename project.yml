@@ -1,0 +1,49 @@
+name: Debris
+options:
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+# keeps Xcode's "update to recommended settings" triangle away - changes made in
+# its dialog land in the generated project and are lost on the next xcodegen run
+attributes:
+  LastUpgradeCheck: "2660"
+settings:
+  base:
+    DEVELOPMENT_TEAM: 4S9Z57Q8KR
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_VERSION: "6.0"
+packages:
+  DebrisKit:
+    path: Packages/DebrisKit
+targets:
+  Debris:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - Resources/Assets.xcassets
+    dependencies:
+      - package: DebrisKit
+        product: DebrisKit
+    entitlements:
+      path: Resources/Debris.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: se.mews.debris
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_KEY_CFBundleDisplayName: Debris
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright 2026 Martin Stockzell
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: Copyright 2026 Martin Stockzell
