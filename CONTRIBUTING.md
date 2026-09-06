@@ -39,7 +39,9 @@ commit that. `scripts/release.sh` then archives a Release build, exports it sign
 Developer ID Application certificate, sends the zip to Apple's notary service, staples the ticket
 and leaves `build/release/Debris-1.2.zip` with its SHA-256 printed for the GitHub release. It
 needs the certificate in the keychain and notarytool credentials stored once with
-`xcrun notarytool store-credentials debris`.
+`xcrun notarytool store-credentials debris`. If the notary service takes longer than you can
+wait, `scripts/release.sh finish` staples and zips the same export once
+`xcrun notarytool history --keychain-profile debris` says Accepted.
 
 ## Before you open a pull request
 
