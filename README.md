@@ -1,4 +1,4 @@
-# Debris
+# <img src="assets/icon-256.png" alt="" width="40"> Debris
 
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-F05138?logo=swift&logoColor=white)
