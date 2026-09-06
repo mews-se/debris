@@ -4,7 +4,6 @@ public struct AppOwnedItems: Sendable {
     public let app: InstalledApp
     public var bundle: LeftoverItem
     public var items: [LeftoverItem]
-    public var receipts: [String]
     public var cask: String?
     public var unreadable: [LeftoverLocation]
 
@@ -59,6 +58,8 @@ public actor OwnedItemsFinder {
                                                                  evidence: ["The app itself"]),
                                   modified: bundleModified)
 
+        items += Receipts.items(for: app)
+
         if measureSizes {
             let total = items.count + 1
             progress?(ScanProgress(phase: "Measuring sizes", completed: 0, total: total))
@@ -69,15 +70,33 @@ public actor OwnedItemsFinder {
             items = Array(measured.dropFirst())
         }
 
-        let receipts = Receipts.packages(installing: app)
         var cask: String?
         if case .homebrewCask(let name) = app.source { cask = name }
         return AppOwnedItems(app: app, bundle: bundle, items: items.sorted { ($0.size ?? 0) > ($1.size ?? 0) },
-                             receipts: receipts, cask: cask, unreadable: unreadable)
+                             cask: cask, unreadable: unreadable)
     }
 }
 
 enum Receipts {
+    static let directory = URL(fileURLWithPath: "/var/db/receipts")
+
+    /// The receipt files of every package that installed the app: the same two files
+    /// `pkgutil --forget` deletes, listed so they can go to the Trash with the rest.
+    static func items(for app: InstalledApp) -> [LeftoverItem] {
+        let location = LeftoverLocation(kind: .receipts, domain: .system, url: directory)
+        return packages(installing: app).flatMap { id -> [LeftoverItem] in
+            ["plist", "bom"].compactMap { ext in
+                let url = directory.appendingPathComponent(id).appendingPathExtension(ext)
+                guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+                let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                return LeftoverItem(url: url, location: location, identifier: id,
+                                    classification: Classification(ownership: .installed(bundleID: app.bundleID), confidence: .high,
+                                                                   evidence: ["Receipt of the package that installed \(app.url.lastPathComponent)"]),
+                                    modified: modified)
+            }
+        }
+    }
+
     /// Package identifiers whose receipt installed the app bundle. `pkgutil --file-info` does
     /// not resolve paths for every receipt, so the candidates are found by name and confirmed
     /// against the receipt's install location and first entry.

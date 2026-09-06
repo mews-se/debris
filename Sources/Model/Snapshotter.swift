@@ -49,7 +49,11 @@ enum Snapshotter {
 
         model.module = .clean
         try? await Task.sleep(for: .seconds(1))
-        capture("5-clean", into: directory)
+        capture("5-clean-intro", into: directory)
+
+        await model.clean.scan(inventory: model.inventory)
+        try? await Task.sleep(for: .seconds(1))
+        capture("5b-clean-results", into: directory)
         NSApp.terminate(nil)
     }
 

@@ -26,8 +26,8 @@ final class LeftoversModel {
     var visibleItems: [LeftoverItem] { visibleGroups.flatMap(\.items) }
     var selectedItems: [LeftoverItem] { visibleItems.filter { selection.contains($0.id) } }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + ($1.size ?? 0) } }
-    var removableSelection: [LeftoverItem] { selectedItems.filter { !$0.requiresAdmin } }
-    var selectedAdminCount: Int { selectedItems.count - removableSelection.count }
+    var removableSelection: [LeftoverItem] { selectedItems.filter(\.isRemovable) }
+    var selectedAdminCount: Int { removableSelection.filter(\.requiresAdmin).count }
     var totalVisibleSize: Int64 { visibleItems.reduce(0) { $0 + ($1.size ?? 0) } }
 
     func scan(inventory: AppInventory) async {
@@ -47,7 +47,7 @@ final class LeftoversModel {
     }
 
     func selectLikely() {
-        selection = Set(visibleItems.filter { $0.classification.confidence == .high && !$0.requiresAdmin }.map(\.id))
+        selection = Set(visibleItems.filter { $0.classification.confidence == .high && $0.isRemovable }.map(\.id))
     }
 
     func clearSelection() {
@@ -59,14 +59,16 @@ final class LeftoversModel {
     }
 
     func setSelected(_ item: LeftoverItem, _ on: Bool) {
+        guard item.isRemovable else { return }
         if on { selection.insert(item.id) } else { selection.remove(item.id) }
     }
 
     /// true when every item is selected, false when none, nil when mixed.
     func selectionState(of group: GhostApp) -> Bool? {
-        let count = group.items.filter { selection.contains($0.id) }.count
+        let removable = group.items.filter(\.isRemovable)
+        let count = removable.filter { selection.contains($0.id) }.count
         if count == 0 { return false }
-        if count == group.items.count { return true }
+        if count == removable.count { return true }
         return nil
     }
 
@@ -74,11 +76,14 @@ final class LeftoversModel {
         for item in group.items { setSelected(item, on) }
     }
 
+    /// The user's own files go first; system-owned ones follow in one batch behind the
+    /// administrator prompt.
     func trashSelected() async {
-        let urls = removableSelection.map(\.url)
-        guard !urls.isEmpty else { return }
+        let own = removableSelection.filter { !$0.requiresAdmin }.map(\.url)
+        let admin = removableSelection.filter(\.requiresAdmin).map(\.url)
+        guard !own.isEmpty || !admin.isEmpty else { return }
         isRemoving = true
-        let results = await Task.detached { TrashExecutor.trash(urls) }.value
+        let results = await Task.detached { TrashExecutor.trash(own) + AdminRemover.trash(admin) }.value
         let removed = Set(results.filter(\.succeeded).map(\.url.path))
         groups = groups.compactMap { group in
             let items = group.items.filter { !removed.contains($0.url.path) }

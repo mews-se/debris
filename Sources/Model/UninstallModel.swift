@@ -27,9 +27,9 @@ final class UninstallModel {
         report?.everything.filter { selection.contains($0.id) } ?? []
     }
 
-    var removableSelection: [LeftoverItem] { selectedItems.filter { !$0.requiresAdmin } }
+    var removableSelection: [LeftoverItem] { selectedItems.filter(\.isRemovable) }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + ($1.size ?? 0) } }
-    var selectedAdminCount: Int { selectedItems.count - removableSelection.count }
+    var selectedAdminCount: Int { removableSelection.filter(\.requiresAdmin).count }
     var bundleSelected: Bool { report.map { selection.contains($0.bundle.id) } ?? false }
 
     func select(_ app: InstalledApp?, inventory: AppInventory) {
@@ -50,7 +50,7 @@ final class UninstallModel {
             }
             guard !Task.isCancelled, let self, self.selectedAppID == app.id else { return }
             self.report = result
-            self.selection = Set(result.everything.filter { !$0.requiresAdmin }.map(\.id))
+            self.selection = Set(result.everything.filter(\.isRemovable).map(\.id))
             self.isLoading = false
             self.progress = nil
         }
@@ -59,10 +59,12 @@ final class UninstallModel {
     func isSelected(_ item: LeftoverItem) -> Bool { selection.contains(item.id) }
 
     func setSelected(_ item: LeftoverItem, _ on: Bool) {
+        guard item.isRemovable else { return }
         if on { selection.insert(item.id) } else { selection.remove(item.id) }
     }
 
-    /// Quits the app if it is running, then moves the selection to the Trash, the bundle last.
+    /// Quits the app if it is running, then moves the selection to the Trash: the user's own
+    /// files first, the bundle last, and system-owned files behind one administrator prompt.
     func remove() async {
         guard let report else { return }
         isRemoving = true
@@ -80,9 +82,13 @@ final class UninstallModel {
                 removalNote = "\(report.app.name) did not quit, so the app bundle was left in place."
             }
         }
-        var urls = removableSelection.filter { $0.id != report.bundle.id }.map(\.url)
-        if bundleSelected, runningApplication == nil { urls.append(report.bundle.url) }
-        let results = await Task.detached { TrashExecutor.trash(urls) }.value
+        let related = removableSelection.filter { $0.id != report.bundle.id }
+        var own = related.filter { !$0.requiresAdmin }.map(\.url)
+        var admin = related.filter(\.requiresAdmin).map(\.url)
+        if bundleSelected, runningApplication == nil {
+            if report.bundle.requiresAdmin { admin.append(report.bundle.url) } else { own.append(report.bundle.url) }
+        }
+        let results = await Task.detached { TrashExecutor.trash(own) + AdminRemover.trash(admin) }.value
         removalResults = results
         showResults = true
         isRemoving = false

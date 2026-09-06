@@ -34,7 +34,21 @@ struct DebrisCLI {
                 let size = item.size.map { formatter.string(fromByteCount: $0) } ?? "?"
                 print("  \(size.padding(toLength: 10, withPad: " ", startingAt: 0)) \(item.location.title.padding(toLength: 24, withPad: " ", startingAt: 0)) \(item.url.path)   [\(item.classification.evidence.first ?? "")]")
             }
-            print("  receipts: \(report.receipts)  cask: \(report.cask ?? "-")  total: \(formatter.string(fromByteCount: report.totalSize))")
+            print("  cask: \(report.cask ?? "-")  total: \(formatter.string(fromByteCount: report.totalSize))")
+            return
+        }
+        if arguments.contains("--clean") {
+            let groups = await CleanScanner(inventory: inventory).scan(measureSizes: measureSizes)
+            let formatter = ByteCountFormatter(); formatter.countStyle = .file
+            for group in groups {
+                print("\n\(group.rule.title) [\(group.rule.category.rawValue)]  \(formatter.string(fromByteCount: group.totalSize))\(group.rule.selectedByDefault ? "" : "  (not selected by default)")")
+                for item in group.items {
+                    let size = item.size.map { formatter.string(fromByteCount: $0) } ?? "?"
+                    print("  \(size.padding(toLength: 10, withPad: " ", startingAt: 0)) \(item.url.path)")
+                }
+            }
+            let total = groups.reduce(Int64(0)) { $0 + $1.totalSize }
+            print("\n\(groups.reduce(0) { $0 + $1.items.count }) items in \(groups.count) rules, \(formatter.string(fromByteCount: total)) in total")
             return
         }
         if let index = arguments.firstIndex(of: "--app"), index + 1 < arguments.count {

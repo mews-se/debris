@@ -13,6 +13,7 @@ final class AppModel {
 
     let leftovers = LeftoversModel()
     let uninstall = UninstallModel()
+    let clean = CleanModel()
 
     func start() async {
         Snapshotter.log("start()")

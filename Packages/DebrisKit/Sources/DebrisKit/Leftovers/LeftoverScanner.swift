@@ -23,6 +23,10 @@ public actor LeftoverScanner {
         for (index, location) in locations.enumerated() {
             progress?(ScanProgress(phase: "Looking in \(location.url.path)", completed: index, total: locations.count))
             guard fm.fileExists(atPath: location.url.path) else { continue }
+            if location.kind == .systemExtensions {
+                items += stagedExtensions(at: location)
+                continue
+            }
             let entries: [String]
             do {
                 entries = try fm.contentsOfDirectory(atPath: location.url.path)
@@ -52,6 +56,21 @@ public actor LeftoverScanner {
             }
         }
         return Result(items: items, unreadable: unreadable)
+    }
+
+    /// A staged extension whose app is gone. Listed so the user knows it is there, but never
+    /// moved: with SIP on only macOS itself can remove it.
+    private func stagedExtensions(at location: LeftoverLocation) -> [LeftoverItem] {
+        SystemExtensions.staged(in: location.url).compactMap { entry in
+            if let app = entry.originApp, FileManager.default.fileExists(atPath: app) { return nil }
+            guard var classification = classifier.classify(name: entry.identifier, identifier: entry.identifier, location: location)
+            else { return nil }
+            if let app = entry.originApp { classification.evidence.append("Installed by \(app), which is gone") }
+            let modified = (try? entry.bundleURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            return LeftoverItem(url: entry.bundleURL, location: location, identifier: entry.identifier,
+                                classification: classification, modified: modified,
+                                blockedReason: SystemExtensions.blockedReason)
+        }
     }
 
     private func isDanglingSymlink(_ url: URL) -> Bool {

@@ -48,7 +48,7 @@ struct LeftoversView: View {
                 Task { await leftovers.trashSelected() }
             }
         } message: {
-            Text("They stay in the Trash until you empty it.")
+            Text(confirmMessage)
         }
         .sheet(isPresented: $leftovers.showResults) {
             RemovalResultsSheet(results: leftovers.removalResults) { leftovers.showResults = false }
@@ -65,6 +65,14 @@ struct LeftoversView: View {
 
     private var confirmTitle: String {
         "Move \(leftovers.removableSelection.count) items (\(Format.size(leftovers.selectedSize))) to the Trash?"
+    }
+
+    private var confirmMessage: String {
+        var text = "They stay in the Trash until you empty it."
+        if leftovers.selectedAdminCount > 0 {
+            text += " \(leftovers.selectedAdminCount) of them are owned by the system, so macOS will ask for an administrator password."
+        }
+        return text
     }
 
     private var intro: some View {
@@ -115,7 +123,7 @@ struct LeftoversView: View {
             }
             Spacer()
             if leftovers.selectedAdminCount > 0 {
-                Label("\(leftovers.selectedAdminCount) selected items need an administrator and are skipped for now", systemImage: "lock")
+                Label("\(leftovers.selectedAdminCount) need an administrator password", systemImage: "lock")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -132,37 +140,15 @@ struct LeftoversView: View {
     }
 }
 
-private struct ScanProgressBar: View {
-    let progress: ScanProgress?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: progress?.fraction)
-            Text(progress?.phase ?? "Scanning")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-    }
-}
-
 private struct GroupHeader: View {
     @Environment(AppModel.self) private var model
     let group: GhostApp
 
     var body: some View {
         HStack(spacing: 10) {
-            let state = model.leftovers.selectionState(of: group)
-            Button {
-                model.leftovers.setSelected(group, state != true)
-            } label: {
-                Image(systemName: state == true ? "checkmark.square.fill" : state == nil ? "minus.square.fill" : "square")
-                    .foregroundStyle(state == false ? .secondary : Color.accentColor)
+            SelectionCheckbox(state: model.leftovers.selectionState(of: group)) { on in
+                model.leftovers.setSelected(group, on)
             }
-            .buttonStyle(.plain)
             Text(group.title).font(.headline)
             ConfidenceTag(confidence: group.confidence)
             if group.needsAdmin {

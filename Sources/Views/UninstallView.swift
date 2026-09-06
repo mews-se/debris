@@ -35,7 +35,7 @@ struct UninstallView: View {
                 }
             }
         } message: {
-            Text("Everything stays in the Trash until you empty it.")
+            Text(confirmMessage)
         }
         .sheet(isPresented: $uninstall.showResults) {
             RemovalResultsSheet(results: uninstall.removalResults) { uninstall.showResults = false }
@@ -50,6 +50,14 @@ struct UninstallView: View {
             return "Move \(report.app.name) and \(max(count - 1, 0)) related items (\(size)) to the Trash?"
         }
         return "Move \(count) items belonging to \(report.app.name) (\(size)) to the Trash?"
+    }
+
+    private var confirmMessage: String {
+        var text = "Everything stays in the Trash until you empty it."
+        if uninstall.selectedAdminCount > 0 {
+            text += " \(uninstall.selectedAdminCount) of the items are owned by the system, so macOS will ask for an administrator password."
+        }
+        return text
     }
 
     private var appList: some View {
@@ -160,20 +168,6 @@ struct UninstallView: View {
                     sectionHeader(kind.rawValue, items: items)
                 }
             }
-            if !report.receipts.isEmpty {
-                Section {
-                    ForEach(report.receipts, id: \.self) { receipt in
-                        HStack {
-                            Image(systemName: "lock").foregroundStyle(.secondary)
-                            Text(receipt)
-                            Spacer()
-                            Text("Forgetting a receipt needs an administrator").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Package receipts").textCase(nil)
-                }
-            }
             if !report.unreadable.isEmpty {
                 Section {
                     ForEach(report.unreadable) { location in
@@ -206,7 +200,7 @@ struct UninstallView: View {
             }
             Spacer()
             if uninstall.selectedAdminCount > 0 {
-                Label("\(uninstall.selectedAdminCount) items need an administrator and are skipped for now", systemImage: "lock")
+                Label("\(uninstall.selectedAdminCount) need an administrator password", systemImage: "lock")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

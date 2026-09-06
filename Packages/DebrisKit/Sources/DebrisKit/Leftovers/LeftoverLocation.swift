@@ -23,6 +23,7 @@ public struct LeftoverLocation: Sendable, Hashable, Identifiable {
         case launchDaemons = "Launch Daemons"
         case privilegedHelpers = "Privileged Helper Tools"
         case kernelExtensions = "Kernel Extensions"
+        case systemExtensions = "System Extensions"
         case audioPlugins = "Audio Plug-Ins"
         case frameworks = "Frameworks"
         case screenSavers = "Screen Savers"
@@ -31,11 +32,15 @@ public struct LeftoverLocation: Sendable, Hashable, Identifiable {
         case services = "Services"
         case internetPlugins = "Internet Plug-Ins"
         case binaries = "Command line tools"
+        case receipts = "Package receipts"
         case shared = "Shared"
         case dotfiles = "Home folder dotfiles"
         case config = "~/.config"
         case localShare = "~/.local/share"
         case userCache = "~/.cache"
+        case developer = "Developer"
+        case toolCache = "Tool caches"
+        case downloads = "Downloads"
     }
 
     public let kind: Kind
@@ -96,6 +101,7 @@ public enum LocationCatalog {
             system(.launchDaemons, "/Library/LaunchDaemons"),
             system(.privilegedHelpers, "/Library/PrivilegedHelperTools"),
             system(.kernelExtensions, "/Library/Extensions"),
+            system(.systemExtensions, "/Library/SystemExtensions"),
             system(.audioPlugins, "/Library/Audio/Plug-Ins/HAL"),
             system(.audioPlugins, "/Library/Audio/Plug-Ins/Components"),
             system(.audioPlugins, "/Library/Audio/Plug-Ins/VST"),

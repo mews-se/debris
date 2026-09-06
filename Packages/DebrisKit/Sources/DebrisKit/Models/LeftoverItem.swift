@@ -50,20 +50,24 @@ public struct LeftoverItem: Sendable, Hashable, Identifiable {
     public let classification: Classification
     public let modified: Date?
     public var size: Int64?
+    /// Set when the item can be listed but not moved, with the reason to show.
+    public var blockedReason: String?
 
     public init(url: URL, location: LeftoverLocation, identifier: String?,
-                classification: Classification, modified: Date?, size: Int64? = nil) {
+                classification: Classification, modified: Date?, size: Int64? = nil, blockedReason: String? = nil) {
         self.url = url
         self.location = location
         self.identifier = identifier
         self.classification = classification
         self.modified = modified
         self.size = size
+        self.blockedReason = blockedReason
     }
 
     public var id: String { url.path }
     public var name: String { url.lastPathComponent }
     public var requiresAdmin: Bool { location.domain == .system }
+    public var isRemovable: Bool { blockedReason == nil }
     public var groupKey: String { Grouping.key(identifier: identifier, name: name) }
 }
 
