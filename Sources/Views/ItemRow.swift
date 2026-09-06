@@ -95,3 +95,18 @@ struct ScanProgressBar: View {
         .padding(.vertical, 8)
     }
 }
+
+/// Toolbar button every module carries: reads the installed apps again and repeats the scan.
+struct RescanButton: View {
+    @Environment(AppModel.self) private var model
+    let hasResults: Bool
+
+    var body: some View {
+        Button(hasResults ? "Rescan" : "Scan", systemImage: "arrow.clockwise") {
+            Task { await model.rescan() }
+        }
+        .keyboardShortcut("r")
+        .help("Read the installed apps again and scan (⌘R)")
+        .disabled(model.isBusy)
+    }
+}

@@ -37,10 +37,7 @@ struct LeftoversView: View {
                 }
                 .pickerStyle(.segmented)
                 .help("How sure Debris has to be before a file is listed")
-                Button("Scan", systemImage: "magnifyingglass") {
-                    Task { await leftovers.scan(inventory: model.inventory) }
-                }
-                .disabled(leftovers.isScanning || !model.hasInventory)
+                RescanButton(hasResults: leftovers.hasScanned)
             }
         }
         .confirmationDialog(confirmTitle, isPresented: $confirmTrash, titleVisibility: .visible) {

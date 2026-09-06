@@ -37,6 +37,23 @@ final class AppModel {
         inventoryProgress = nil
     }
 
+    /// Reads the installed apps again, then repeats whatever the current module was showing.
+    func rescan() async {
+        await refreshInventory()
+        switch module {
+        case .leftovers: await leftovers.scan(inventory: inventory)
+        case .clean: await clean.scan(inventory: inventory)
+        case .uninstall:
+            let app = inventory.apps.first { $0.id == uninstall.selectedAppID }
+            uninstall.select(app, inventory: inventory)
+        case nil: break
+        }
+    }
+
+    var isBusy: Bool {
+        inventoryProgress != nil || leftovers.isScanning || clean.isScanning || uninstall.isLoading
+    }
+
     func openFullDiskAccessSettings() {
         NSWorkspace.shared.open(FullDiskAccess.settingsURL)
     }

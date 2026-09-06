@@ -27,6 +27,9 @@ struct UninstallView: View {
         }
         .navigationTitle("Uninstall")
         .searchable(text: $search, placement: .toolbar, prompt: "App name or identifier")
+        .toolbar {
+            RescanButton(hasResults: true)
+        }
         .confirmationDialog(confirmTitle, isPresented: $confirmRemoval, titleVisibility: .visible) {
             Button(uninstall.runningApplication == nil ? "Move to Trash" : "Quit and Move to Trash", role: .destructive) {
                 Task {

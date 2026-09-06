@@ -28,10 +28,7 @@ struct CleanView: View {
         }
         .navigationTitle("Clean")
         .toolbar {
-            Button("Scan", systemImage: "magnifyingglass") {
-                Task { await clean.scan(inventory: model.inventory) }
-            }
-            .disabled(clean.isScanning || !model.hasInventory)
+            RescanButton(hasResults: clean.hasScanned)
         }
         .confirmationDialog("Move \(clean.selectedItems.count) items (\(Format.size(clean.selectedSize))) to the Trash?",
                             isPresented: $confirmTrash, titleVisibility: .visible) {
