@@ -12,11 +12,14 @@ final class AppModel {
     var module: Module? = .leftovers
 
     let leftovers = LeftoversModel()
+    let uninstall = UninstallModel()
 
     func start() async {
+        Snapshotter.log("start()")
         refreshPermissions()
         Snapshotter.runIfRequested(model: self)
         await refreshInventory()
+        Snapshotter.log("inventory: \(inventory.topLevelApps.count) apps")
     }
 
     func refreshPermissions() {

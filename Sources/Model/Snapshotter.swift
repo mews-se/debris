@@ -12,12 +12,18 @@ enum Snapshotter {
 
     static func runIfRequested(model: AppModel) {
         guard let directory else { return }
+        log("snapshot mode, writing to \(directory.path)")
         Task { await run(model: model, into: directory) }
+    }
+
+    static func log(_ message: String) {
+        FileHandle.standardError.write(Data("[snapshot] \(message)\n".utf8))
     }
 
     private static func run(model: AppModel, into directory: URL) async {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        while !model.hasInventory { try? await Task.sleep(for: .milliseconds(200)) }
+        for _ in 0..<300 where !model.hasInventory { try? await Task.sleep(for: .milliseconds(200)) }
+        log("inventory ready: \(model.hasInventory), windows: \(NSApp.windows.count), visible: \(NSApp.windows.filter(\.isVisible).count)")
         try? await Task.sleep(for: .seconds(1))
         capture("1-leftovers-intro", into: directory)
 
@@ -33,6 +39,14 @@ enum Snapshotter {
         try? await Task.sleep(for: .seconds(1))
         capture("4-uninstall", into: directory)
 
+        if let app = model.inventory.topLevelApps.first(where: { $0.name.localizedCaseInsensitiveContains("speedtest") })
+            ?? model.inventory.topLevelApps.first(where: { $0.source == .applications }) {
+            model.uninstall.select(app, inventory: model.inventory)
+            for _ in 0..<50 where model.uninstall.isLoading { try? await Task.sleep(for: .milliseconds(200)) }
+            try? await Task.sleep(for: .seconds(1))
+            capture("4b-uninstall-detail", into: directory)
+        }
+
         model.module = .clean
         try? await Task.sleep(for: .seconds(1))
         capture("5-clean", into: directory)
@@ -40,11 +54,12 @@ enum Snapshotter {
     }
 
     private static func capture(_ name: String, into directory: URL) {
-        guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+        guard let window = NSApp.windows.first(where: { $0.isVisible }) else { log("no visible window for \(name)"); return }
         let file = directory.appendingPathComponent("\(name).png")
         guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)
         guard let data = rep.representation(using: .png, properties: [:]) else { return }
         try? data.write(to: file)
+        log("wrote \(name)")
     }
 }
