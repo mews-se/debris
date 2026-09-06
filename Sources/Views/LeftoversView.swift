@@ -85,7 +85,7 @@ struct LeftoversView: View {
             ForEach(leftovers.visibleGroups) { group in
                 Section {
                     ForEach(group.items) { item in
-                        LeftoverRow(item: item)
+                        ItemRow(item: item, isSelected: leftovers.isSelected(item)) { leftovers.setSelected(item, $0) }
                     }
                 } header: {
                     GroupHeader(group: group)
@@ -174,53 +174,6 @@ private struct GroupHeader: View {
         }
         .textCase(nil)
         .padding(.vertical, 4)
-    }
-}
-
-private struct LeftoverRow: View {
-    @Environment(AppModel.self) private var model
-    let item: LeftoverItem
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { model.leftovers.isSelected(item) },
-                set: { model.leftovers.setSelected(item, $0) }
-            ))
-            .toggleStyle(.checkbox)
-            .labelsHidden()
-            .disabled(item.requiresAdmin)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.name).lineLimit(1).truncationMode(.middle)
-                Text(Format.homeRelative(item.url))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            Spacer()
-            if item.requiresAdmin {
-                Image(systemName: "lock").foregroundStyle(.secondary)
-                    .help("Owned by the system; removing it needs an administrator")
-            }
-            Text(item.location.title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 150, alignment: .leading)
-            Text(Format.date(item.modified))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
-            Text(Format.size(item.size)).monospacedDigit().frame(width: 80, alignment: .trailing)
-        }
-        .help(item.classification.evidence.joined(separator: "\n"))
-        .contextMenu {
-            Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([item.url]) }
-            Button("Copy Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(item.url.path, forType: .string)
-            }
-        }
     }
 }
 
