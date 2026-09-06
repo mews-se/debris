@@ -9,8 +9,8 @@ they own, and clears caches and developer junk. It shows the list first, explain
 is on it, and moves things to the Trash rather than deleting them, so a wrong guess is one drag
 away from undone.
 
-It is in early development. The first release will carry three modules; the Leftovers module is
-the one that works today.
+It is in early development. The first release will carry three modules; Leftovers and Uninstall
+work today, Clean is being built.
 
 ## What it does
 
@@ -29,10 +29,17 @@ last-modified date and a confidence:
 The confidence filter in the toolbar starts at Likely. Files owned by the system are marked with
 a lock and left alone for now.
 
-**Uninstall** and **Clean** are being built. Uninstall will show an installed app together with
-its containers, preferences, caches, helpers and package receipts so all of it goes at once.
-Clean will remove caches, logs, developer artifacts and installer files, each behind a rule that
-says what the files are and why they are safe to remove.
+**Uninstall** lists the installed apps. Pick one and Debris shows the app bundle together with
+everything it can tie to it: containers, group containers, preferences, caches, HTTP storages,
+WebKit data, saved state, launch agents, helper tools and dotfiles, each with the reason it is on
+the list. Ownership uses the same signals as the Leftovers scan turned around: bundle identifiers
+including embedded helpers, the team and app groups from the code signature, launchd jobs that
+point into the bundle, and names. Anything shared with another installed app stays, so removing
+Word does not touch what Excel still uses. A running app is quit first, and package receipts are
+shown but left alone until administrator removal exists.
+
+**Clean** is being built. It will remove caches, logs, developer artifacts and installer files,
+each behind a rule that says what the files are and why they are safe to remove.
 
 ## What it does not do
 

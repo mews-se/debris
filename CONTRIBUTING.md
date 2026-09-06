@@ -26,8 +26,10 @@ project does not fail loudly, it simply is not compiled.
 
 The logic lives in `Packages/DebrisKit` and has no dependency on the app. `swift test` runs the
 classifier tests and `swift run debris` prints what a scan finds, which is the fastest way to
-check a change against a real Mac. The app can also write PNGs of its own screens with
-`Debris -snapshotDir /some/folder`.
+check a change against a real Mac, and `swift run debris --uninstall "App Name"` prints what the
+Uninstall module would list for an app. The app can also write PNGs of its own screens with
+`Debris -snapshotDir /some/folder -ApplePersistenceIgnoreState YES`; the second flag matters,
+because a killed previous instance leaves window state behind that otherwise stalls the launch.
 
 macOS 15 or later. The app is not sandboxed and is signed for Developer ID, not the App Store.
 
