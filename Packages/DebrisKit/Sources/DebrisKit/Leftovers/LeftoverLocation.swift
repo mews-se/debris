@@ -7,6 +7,7 @@ public struct LeftoverLocation: Sendable, Hashable, Identifiable {
     }
 
     public enum Kind: String, Sendable, Hashable, CaseIterable {
+        case application = "Application"
         case applicationSupport = "Application Support"
         case caches = "Caches"
         case preferences = "Preferences"

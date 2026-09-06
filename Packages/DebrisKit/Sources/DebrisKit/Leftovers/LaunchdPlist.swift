@@ -1,6 +1,14 @@
 import Foundation
 
 enum LaunchdPlist {
+    static func program(at url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        else { return nil }
+        if let program = plist["Program"] as? String { return program }
+        return (plist["ProgramArguments"] as? [String])?.first
+    }
+
     /// Bundle identifiers a launchd job declares or implies: AssociatedBundleIdentifiers, plus the
     /// bundle that contains its program when the program lives inside an .app.
     static func associatedBundleIDs(at url: URL) -> [String]? {

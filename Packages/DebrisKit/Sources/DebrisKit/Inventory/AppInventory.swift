@@ -11,6 +11,7 @@ public struct AppInventory: Sendable {
     let vendorWords: Set<String>
     let teamIDs: Set<String>
     let appGroups: Set<String>
+    let appGroupOwners: [String: Set<String>]
     let bundleWords: Set<String>
     let byBundleID: [String: InstalledApp]
 
@@ -25,6 +26,7 @@ public struct AppInventory: Sendable {
         var vendorWords = Set<String>()
         var teams = Set<String>()
         var groups = Set<String>()
+        var groupOwners: [String: Set<String>] = [:]
         var words = Set<String>()
         var byID: [String: InstalledApp] = [:]
         for app in apps {
@@ -36,7 +38,10 @@ public struct AppInventory: Sendable {
             names.insert(Identifier.normalized(app.name))
             names.insert(Identifier.normalized(app.url.deletingPathExtension().lastPathComponent))
             if let team = app.teamID { teams.insert(team) }
-            for group in app.appGroups { groups.insert(group.lowercased()) }
+            for group in app.appGroups {
+                groups.insert(group.lowercased())
+                groupOwners[group.lowercased(), default: []].insert(id)
+            }
             if let existing = byID[id] {
                 if !existing.isTopLevel && app.isTopLevel { byID[id] = app }
             } else {
@@ -51,6 +56,7 @@ public struct AppInventory: Sendable {
         self.vendorWords = vendorWords
         self.teamIDs = teams
         self.appGroups = groups
+        self.appGroupOwners = groupOwners
         self.bundleWords = words
         self.byBundleID = byID
     }
@@ -121,6 +127,11 @@ public struct AppInventory: Sendable {
             if normalizedName.hasPrefix(known) || known.hasPrefix(normalizedName) { return known }
         }
         return nil
+    }
+
+    /// Bundle identifiers of the installed apps whose signature declares the group.
+    public func owners(ofAppGroup group: String) -> Set<String> {
+        appGroupOwners[group.lowercased()] ?? []
     }
 
     public func teamIsInstalled(_ teamID: String) -> Bool { teamIDs.contains(teamID) }

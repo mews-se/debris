@@ -21,6 +21,22 @@ struct DebrisCLI {
             }
             return
         }
+        if let index = arguments.firstIndex(of: "--uninstall"), index + 1 < arguments.count {
+            let needle = arguments[index + 1].lowercased()
+            guard let app = inventory.topLevelApps.first(where: { $0.name.lowercased() == needle })
+                ?? inventory.topLevelApps.first(where: { $0.name.lowercased().contains(needle) }) else {
+                print("no installed app matches \(needle)"); return
+            }
+            let report = await OwnedItemsFinder(inventory: inventory).find(for: app, measureSizes: measureSizes)
+            let formatter = ByteCountFormatter(); formatter.countStyle = .file
+            print("\(app.name) (\(app.bundleID)) at \(app.url.path)")
+            for item in report.everything {
+                let size = item.size.map { formatter.string(fromByteCount: $0) } ?? "?"
+                print("  \(size.padding(toLength: 10, withPad: " ", startingAt: 0)) \(item.location.title.padding(toLength: 24, withPad: " ", startingAt: 0)) \(item.url.path)   [\(item.classification.evidence.first ?? "")]")
+            }
+            print("  receipts: \(report.receipts)  cask: \(report.cask ?? "-")  total: \(formatter.string(fromByteCount: report.totalSize))")
+            return
+        }
         if let index = arguments.firstIndex(of: "--app"), index + 1 < arguments.count {
             let needle = arguments[index + 1].lowercased()
             for app in inventory.apps where app.name.lowercased().contains(needle) || app.bundleID.lowercased().contains(needle) {
