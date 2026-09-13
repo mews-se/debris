@@ -20,9 +20,9 @@ without a detour. It needs macOS 15 or later. More at
 **Leftovers** compares every entry in the folders where apps keep their state (Application
 Support, Caches, Preferences, Containers, Group Containers, HTTP storages, WebKit data, launch
 agents and daemons, helper tools, kernel and audio extensions, the home folder's dotfiles and a
-few more) against the apps, helpers, extensions and Homebrew packages that are actually
-installed. Whatever has no owner left is listed, grouped by the app it came from, with a size, a
-last-modified date and a confidence:
+few more) against the apps, helpers, extensions, command-line tools and Homebrew packages that
+are actually installed. Whatever has no owner left is listed, grouped by the app it came from,
+with a size, a last-modified date and a confidence:
 
 - *Likely leftover*: no installed app, helper or package matches the file at all.
 - *Possibly leftover*: no exact match, but the same vendor still has other apps installed.

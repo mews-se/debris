@@ -3,10 +3,12 @@ import Foundation
 public struct AppInventory: Sendable {
     public let apps: [InstalledApp]
     public let homebrewFormulae: Set<String>
+    public let commands: Set<String>
     public let scannedAt: Date
 
     let bundleIDs: Set<String>
     let names: Set<String>
+    let appNames: Set<String>
     let vendors: Set<String>
     let vendorWords: Set<String>
     let teamIDs: Set<String>
@@ -15,13 +17,17 @@ public struct AppInventory: Sendable {
     let bundleWords: Set<String>
     let byBundleID: [String: InstalledApp]
 
-    public init(apps: [InstalledApp], homebrewFormulae: Set<String> = [], scannedAt: Date = .now) {
+    public init(apps: [InstalledApp], homebrewFormulae: Set<String> = [], commands: Set<String> = [], scannedAt: Date = .now) {
         self.apps = apps
         self.homebrewFormulae = Set(homebrewFormulae.map { $0.lowercased() })
+        var commandNames = Set(commands.map(Identifier.normalized))
+        commandNames.remove("")
+        self.commands = commandNames
         self.scannedAt = scannedAt
 
         var ids = Set<String>()
         var names = Set<String>()
+        var appNames = Set<String>()
         var vendors = Set<String>()
         var vendorWords = Set<String>()
         var teams = Set<String>()
@@ -37,6 +43,10 @@ public struct AppInventory: Sendable {
             if let word = app.vendor.split(separator: ".").dropFirst().first, word.count >= 5 { vendorWords.insert(String(word)) }
             names.insert(Identifier.normalized(app.name))
             names.insert(Identifier.normalized(app.url.deletingPathExtension().lastPathComponent))
+            if app.isTopLevel {
+                appNames.insert(Identifier.normalized(app.name))
+                appNames.insert(Identifier.normalized(app.url.deletingPathExtension().lastPathComponent))
+            }
             if let team = app.teamID { teams.insert(team) }
             for group in app.appGroups {
                 groups.insert(group.lowercased())
@@ -48,10 +58,15 @@ public struct AppInventory: Sendable {
                 byID[id] = app
             }
         }
-        for formula in homebrewFormulae { names.insert(Identifier.normalized(formula)) }
+        for formula in homebrewFormulae {
+            names.insert(Identifier.normalized(formula))
+            appNames.insert(Identifier.normalized(formula))
+        }
         names.remove("")
+        appNames.remove("")
         self.bundleIDs = ids
         self.names = names
+        self.appNames = appNames
         self.vendors = vendors
         self.vendorWords = vendorWords
         self.teamIDs = teams
@@ -97,6 +112,17 @@ public struct AppInventory: Sendable {
 
     public func nameIsInstalled(_ normalizedName: String) -> Bool {
         !normalizedName.isEmpty && names.contains(normalizedName)
+    }
+
+    /// The name of a top-level app or Homebrew package; embedded helpers with generic
+    /// names such as "Helper" or "Widgets" do not count.
+    public func appNameIsInstalled(_ normalizedName: String) -> Bool {
+        !normalizedName.isEmpty && appNames.contains(normalizedName)
+    }
+
+    /// An executable with exactly this name in one of the usual command directories.
+    public func commandIsInstalled(_ normalizedName: String) -> Bool {
+        !normalizedName.isEmpty && commands.contains(normalizedName)
     }
 
     /// A known name at least `minimumLength` characters long contained in the text, or vice versa.

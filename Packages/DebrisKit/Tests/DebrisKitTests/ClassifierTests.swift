@@ -113,7 +113,7 @@ struct TeamAndGroupTests {
 struct NameOwnershipTests {
     let inventory = AppInventory(apps: [
         InstalledApp(bundleID: "com.openai.codex", name: "ChatGPT", url: URL(fileURLWithPath: "/Applications/ChatGPT.app"), source: .applications),
-        InstalledApp(bundleID: "org.raspberrypi.imagingutility", name: "Raspberry Pi Imager", url: URL(fileURLWithPath: "/Applications/Raspberry Pi Imager.app"), source: .applications),
+        InstalledApp(bundleID: "com.raspberrypi.rpi-imager", name: "Raspberry Pi Imager", url: URL(fileURLWithPath: "/Applications/Raspberry Pi Imager.app"), source: .applications),
         InstalledApp(bundleID: "org.torproject.torbrowser", name: "Tor Browser", url: URL(fileURLWithPath: "/Applications/Tor Browser.app"), source: .applications),
     ])
     let caches = LeftoverLocation(kind: .caches, domain: .user, url: URL(fileURLWithPath: "/Users/test/Library/Caches"))
@@ -124,6 +124,34 @@ struct NameOwnershipTests {
         #expect(classifier.classify(name: "Raspberry Pi", identifier: nil, location: caches) == nil)
         #expect(classifier.classify(name: "TorBrowser-Data", identifier: nil, location: caches) == nil)
         #expect(classifier.classify(name: "Vivaldi", identifier: nil, location: caches)?.confidence == .high)
+    }
+
+    @Test func qtStylePreferencesMatchTheAppName() {
+        let classifier = Classifier(inventory: inventory)
+        let prefs = LeftoverLocation(kind: .preferences, domain: .user, url: URL(fileURLWithPath: "/Users/test/Library/Preferences"))
+        #expect(classifier.classify(name: "com.raspberrypi.Raspberry Pi Imager.plist", identifier: "com.raspberrypi.Raspberry Pi Imager", location: prefs) == nil)
+        #expect(classifier.classify(name: "com.raspberrypi.Something Else.plist", identifier: "com.raspberrypi.Something Else", location: prefs)?.confidence == .medium)
+    }
+}
+
+struct CommandOwnershipTests {
+    let home = URL(fileURLWithPath: "/Users/test")
+    let inventory = AppInventory(apps: [], homebrewFormulae: ["node"], commands: ["ykman", "oh-my-posh"])
+
+    @Test func toolsOnThePathOwnTheirState() {
+        let classifier = Classifier(inventory: inventory)
+        let localShare = LeftoverLocation(kind: .localShare, domain: .user, url: home.appendingPathComponent(".local/share"))
+        let cache = LeftoverLocation(kind: .userCache, domain: .user, url: home.appendingPathComponent(".cache"))
+        #expect(classifier.classify(name: "ykman", identifier: nil, location: localShare) == nil)
+        #expect(classifier.classify(name: "oh-my-posh", identifier: nil, location: cache) == nil)
+        #expect(classifier.classify(name: "prisma", identifier: nil, location: cache)?.confidence == .medium)
+    }
+
+    @Test func nodeGypCacheBelongsToNode() {
+        let caches = LeftoverLocation(kind: .caches, domain: .user, url: home.appendingPathComponent("Library/Caches"))
+        #expect(Classifier(inventory: inventory).classify(name: "node-gyp", identifier: nil, location: caches) == nil)
+        let without = Classifier(inventory: AppInventory(apps: []))
+        #expect(without.classify(name: "node-gyp", identifier: nil, location: caches)?.confidence == .high)
     }
 }
 

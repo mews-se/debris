@@ -35,19 +35,19 @@ public struct Classifier: Sendable {
     private func classify(identifier: String, name: String, location: LeftoverLocation) -> Classification? {
         let lower = identifier.lowercased()
         if lower.hasPrefix("com.apple.") { return nil }
-        if let related = inventory.relatedBundleID(to: identifier) {
-            _ = related
-            return nil
-        }
+        if inventory.relatedBundleID(to: identifier) != nil { return nil }
         if inventory.appGroupIsInstalled(identifier) { return nil }
+
+        // Qt apps write com.vendor.App Name.plist: the app's own name outranks a vendor match
+        let parts = IdentifierParser.nameParts(of: identifier)
+        if parts.contains(where: { $0.count >= 6 && inventory.appNameIsInstalled($0) }) { return nil }
 
         let vendor = Identifier.vendor(of: identifier)
         if inventory.vendorIsInstalled(vendor) {
             return Classification(ownership: .vendor(vendor), confidence: .medium,
                                   evidence: ["No app with this identifier, but \(vendor) still has apps installed"])
         }
-        for part in IdentifierParser.nameParts(of: identifier) where inventory.nameIsInstalled(part) {
-            if part.count >= 6 { return nil }
+        for part in parts where inventory.nameIsInstalled(part) {
             return Classification(ownership: .name(part), confidence: .low,
                                   evidence: ["\"\(part)\" matches the name of an installed app or Homebrew package"])
         }
@@ -68,12 +68,13 @@ public struct Classifier: Sendable {
             for owner in owners where inventory.nameIsInstalled(owner) { return nil }
             let stripped = name.hasPrefix(".") ? Identifier.normalized(String(name.dropFirst())) : normalized
             if inventory.nameIsInstalled(stripped) || inventory.bundleWordIsInstalled(stripped) || inventory.prefixNameMatch(stripped) != nil { return nil }
+            if inventory.commandIsInstalled(stripped) { return nil }
             if let match = inventory.fuzzyNameMatch(stripped) {
                 return Classification(ownership: .name(match), confidence: .low,
                                       evidence: ["Name resembles \(match), which is installed"])
             }
             let evidence = owners.isEmpty
-                ? ["No installed app or Homebrew package matches this name"]
+                ? ["No installed app, command-line tool or Homebrew package matches this name"]
                 : ["Belongs to \(owners.joined(separator: " or ")), which is not installed"]
             return Classification(ownership: .unknown, confidence: owners.isEmpty ? .medium : .high, evidence: evidence)
         }
@@ -82,6 +83,7 @@ public struct Classifier: Sendable {
         let normalizedStem = Identifier.normalized(stem)
         if inventory.nameIsInstalled(normalized) || inventory.nameIsInstalled(normalizedStem) { return nil }
         if inventory.bundleWordIsInstalled(normalizedStem) || inventory.prefixNameMatch(normalizedStem) != nil { return nil }
+        if inventory.commandIsInstalled(normalizedStem) { return nil }
         let stripped = IdentifierParser.stripContainerPrefixes(name)
         if let firstWord = stripped.split(separator: ".").first, inventory.vendorWordIsInstalled(String(firstWord)) {
             return Classification(ownership: .vendor(String(firstWord)), confidence: .medium,
@@ -107,6 +109,6 @@ public struct Classifier: Sendable {
                                   evidence: ["Not a bundle identifier; macOS itself writes many files like this"])
         }
         return Classification(ownership: .unknown, confidence: .high,
-                              evidence: ["No installed app or Homebrew package matches this name"])
+                              evidence: ["No installed app, command-line tool or Homebrew package matches this name"])
     }
 }

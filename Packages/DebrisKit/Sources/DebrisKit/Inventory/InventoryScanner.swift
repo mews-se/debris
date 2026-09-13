@@ -7,14 +7,16 @@ public actor InventoryScanner {
         public var readSigning: Bool
         public var maxDepth: Int
         public var homebrewPrefixes: [URL]
+        public var commandDirectories: [URL]
 
         public init(roots: [URL], useSpotlight: Bool = true, readSigning: Bool = true,
-                    maxDepth: Int = 12, homebrewPrefixes: [URL]) {
+                    maxDepth: Int = 12, homebrewPrefixes: [URL], commandDirectories: [URL] = []) {
             self.roots = roots
             self.useSpotlight = useSpotlight
             self.readSigning = readSigning
             self.maxDepth = maxDepth
             self.homebrewPrefixes = homebrewPrefixes
+            self.commandDirectories = commandDirectories
         }
 
         public static func standard(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> Options {
@@ -42,7 +44,15 @@ public actor InventoryScanner {
                 home.appendingPathComponent("Library/PreferencePanes"),
             ]
             let prefixes = ["/opt/homebrew", "/usr/local"].map { URL(fileURLWithPath: $0) }
-            return Options(roots: roots, homebrewPrefixes: prefixes)
+            let commandDirectories = [
+                "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin",
+            ].map { URL(fileURLWithPath: $0) } + [
+                home.appendingPathComponent(".local/bin"),
+                home.appendingPathComponent(".cargo/bin"),
+                home.appendingPathComponent("go/bin"),
+                home.appendingPathComponent("bin"),
+            ]
+            return Options(roots: roots, homebrewPrefixes: prefixes, commandDirectories: commandDirectories)
         }
     }
 
@@ -76,8 +86,9 @@ public actor InventoryScanner {
             }
         }
         let formulae = homebrewFormulae(prefixes: options.homebrewPrefixes)
+        let commands = commandNames(in: options.commandDirectories)
         progress?(ScanProgress(phase: "Done", completed: roots.count + 1, total: roots.count + 1))
-        return AppInventory(apps: Array(found.values), homebrewFormulae: formulae)
+        return AppInventory(apps: Array(found.values), homebrewFormulae: formulae, commands: commands)
     }
 
     // MARK: - Walking
@@ -95,8 +106,23 @@ public actor InventoryScanner {
             guard let values = try? url.resourceValues(forKeys: Set(keys)),
                   values.isDirectory == true, values.isSymbolicLink != true
             else { continue }
-            let name = url.lastPathComponent
-            if Self.prunedDirectoryNames.contains(name) || enumerator.level > maxDepth {
+            while let last = enclosingApps.last, !url.path.hasPrefix(last.path + "/") {
+                enclosingApps.removeLast()
+            }
+            if enumerator.level > maxDepth {
+                enumerator.skipDescendants()
+                continue
+            }
+            if Self.prunedDirectoryNames.contains(url.lastPathComponent) {
+                // Electron apps ship whole apps under node_modules, so inside a bundle the
+                // pruned tree is still read, with readdir rather than the enumerator
+                if !enclosingApps.isEmpty {
+                    for bundle in bundles(under: url, maxDepth: maxDepth - enumerator.level) {
+                        if let app = makeApp(at: bundle, infoAt: bundle, source: .embedded, readSigning: false) {
+                            apps.append(app)
+                        }
+                    }
+                }
                 enumerator.skipDescendants()
                 continue
             }
@@ -109,9 +135,6 @@ public actor InventoryScanner {
             if parent.lastPathComponent == "Wrapper", parent.deletingLastPathComponent().pathExtension == "app" {
                 bundleURL = parent.deletingLastPathComponent()
             }
-            while let last = enclosingApps.last, !bundleURL.path.hasPrefix(last.path + "/") {
-                enclosingApps.removeLast()
-            }
             let embedded = !enclosingApps.isEmpty
             let source: InstalledApp.Source = embedded ? .embedded : sourceFor(root: root, url: bundleURL)
             if let app = makeApp(at: bundleURL, infoAt: url, source: source, readSigning: readSigning && !embedded) {
@@ -120,6 +143,30 @@ public actor InventoryScanner {
             }
         }
         return apps
+    }
+
+    /// Directories with a bundle extension below `root`. readdir gives the type of each entry
+    /// without a URL or an attribute lookup, so tens of thousands of files cost milliseconds.
+    private nonisolated func bundles(under root: URL, maxDepth: Int) -> [URL] {
+        var found: [URL] = []
+        func visit(_ path: String, depth: Int) {
+            guard depth <= maxDepth, let dir = opendir(path) else { return }
+            defer { closedir(dir) }
+            while let entry = readdir(dir) {
+                guard Int32(entry.pointee.d_type) == DT_DIR else { continue }
+                let name = withUnsafeBytes(of: entry.pointee.d_name) {
+                    String(decoding: $0.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self)
+                }
+                if name.hasPrefix(".") { continue }
+                let child = path + "/" + name
+                if BundleReader.bundleExtensions.contains((name as NSString).pathExtension.lowercased()) {
+                    found.append(URL(fileURLWithPath: child, isDirectory: true))
+                }
+                visit(child, depth: depth + 1)
+            }
+        }
+        visit(root.path, depth: 1)
+        return found
     }
 
     private nonisolated func sourceFor(root: URL, url: URL) -> InstalledApp.Source {
@@ -161,6 +208,16 @@ public actor InventoryScanner {
                 if let entries = try? FileManager.default.contentsOfDirectory(atPath: dir.path) {
                     for entry in entries where !entry.hasPrefix(".") { names.insert(entry) }
                 }
+            }
+        }
+        return names
+    }
+
+    private nonisolated func commandNames(in directories: [URL]) -> Set<String> {
+        var names = Set<String>()
+        for directory in directories {
+            if let entries = try? FileManager.default.contentsOfDirectory(atPath: directory.path) {
+                for entry in entries where !entry.hasPrefix(".") { names.insert(entry) }
             }
         }
         return names

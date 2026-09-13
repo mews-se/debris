@@ -227,6 +227,7 @@ public struct ProtectionRules: Sendable {
         "Developer": ["xcode"],
         "DVTDownloads": ["xcode"],
         "XCTestDevices": ["xcode"],
+        "node-gyp": ["node"],
         ".putty": ["filezilla", "putty"],
         ".android": ["androidstudio", "androidfiletransfer", "androidplatformtools", "adb"],
         ".m2": ["maven"],
