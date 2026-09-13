@@ -9,7 +9,7 @@ they own, and clears caches and developer junk. It shows the list first, explain
 is on it, and moves things to the Trash rather than deleting them, so a wrong guess is one drag
 away from undone.
 
-Debris 1.0 is the first release. Download `Debris-1.0.dmg` from the
+Download the latest disk image from the
 [releases page](https://github.com/mews-se/debris/releases/latest), open it and drag Debris to
 Applications. The app is signed with a Developer ID and notarized, so Gatekeeper lets it run
 without a detour. It needs macOS 15 or later. More at
