@@ -1,1 +1,5 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/mews-se/debris/security/advisories/new
+    about: Anything that could make the app remove or expose something it should not goes through GitHub's private report, not a public issue.

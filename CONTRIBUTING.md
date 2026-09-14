@@ -78,6 +78,9 @@ costs the user data; a file wrongly skipped costs disk space. The first is the o
 All user-facing text is English only and lives as plain literals in the views; the app carries no
 string catalog.
 
+If what you found is a security problem, keep it out of the issue tracker: use "Report a
+vulnerability" under the Security tab instead. SECURITY.md has the details.
+
 ## Commits
 
 Keep commits focused. Subject in the imperative with a conventional prefix (`feat:`, `fix:`,
