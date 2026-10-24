@@ -45,11 +45,11 @@ listed with the rest and go to the Trash with it, which is what `pkgutil --forge
 
 **Clean** removes caches, logs, developer artifacts and installer files, each behind a rule that
 says what the files are and why they are safe to remove: app caches and logs (only for apps that
-are still installed; the rest is a leftover), Xcode's build folders, device support files and
-archives, unavailable simulators, the download caches of Homebrew, npm, Yarn, pip, Swift Package
-Manager, CocoaPods, Cargo, Gradle, Maven and Go, and disk images or installer packages sitting in
-Downloads. Everything is listed with its size first. Archives, device support files and
-installers are never selected for you, and neither is the cache of an app that is running.
+are still installed; the rest is a leftover), Xcode's build folders, caches, device support files
+and archives, unavailable simulators, the download caches of Homebrew, npm, Yarn, pip, Swift
+Package Manager, CocoaPods, Cargo, Gradle, Maven and Go, and disk images or installer packages
+sitting in Downloads. Everything is listed with its size first. Archives, device support files
+and installers are never selected for you, and neither is the cache of an app that is running.
 
 ## What it does not do
 
@@ -78,12 +78,16 @@ command line tool:
 
 ```
 cd Packages/DebrisKit
-swift run debris                        # scan and print what the app would list
+swift run debris                        # Likely and Possibly leftovers
 swift run debris --all                  # include the unclear cases
 swift run debris --uninstall "App Name" # what the Uninstall module would list
 swift run debris --clean                # what the Clean rules find
+swift run debris --app "App Name"       # bundle ids, teams and app groups of matches
+swift run debris --missing              # apps in /Applications the inventory missed
 swift test
 ```
+
+`--no-sizes` skips measuring sizes in any of the scans.
 
 Releases are notarized Developer ID builds made with `scripts/release.sh`, see
 [CONTRIBUTING](CONTRIBUTING.md).
