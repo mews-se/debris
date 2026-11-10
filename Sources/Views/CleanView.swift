@@ -76,6 +76,12 @@ struct CleanView: View {
         List(selection: Binding(get: { clean.focusedItemID }, set: { clean.focusedItemID = $0 })) {
             ForEach(clean.groups) { group in
                 Section {
+                    Text(group.rule.what + " " + group.rule.why)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .selectionDisabled()
+                        .listRowSeparator(.hidden)
                     ForEach(group.items) { item in
                         ItemRow(item: item, isSelected: clean.isSelected(item), onToggle: { clean.setSelected(item, $0) },
                                 showLocation: false, badge: clean.isRunning(item) ? "Running" : nil)
@@ -115,32 +121,28 @@ struct CleanView: View {
     }
 }
 
+/// One line only: a List on macOS keeps a section header at the height it was first measured
+/// with, so wrapped text there is cut off or leaves a gap once the width changes. The rule's
+/// explanation is the first row of the section instead.
 private struct RuleHeader: View {
     @Environment(AppModel.self) private var model
     let group: CleanGroup
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
-                SelectionCheckbox(state: model.clean.selectionState(of: group)) { on in
-                    model.clean.setSelected(group, on)
-                }
-                Text(group.rule.title).font(.headline)
-                Text(group.rule.category.rawValue)
-                    .font(.caption2.weight(.medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(group.items.count) items").foregroundStyle(.secondary)
-                Text(Format.size(group.totalSize)).monospacedDigit().frame(width: 80, alignment: .trailing)
+        HStack(spacing: 10) {
+            SelectionCheckbox(state: model.clean.selectionState(of: group)) { on in
+                model.clean.setSelected(group, on)
             }
-            Text(group.rule.what + " " + group.rule.why)
-                .font(.caption)
+            Text(group.rule.title).font(.headline)
+            Text(group.rule.category.rawValue)
+                .font(.caption2.weight(.medium))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.quaternary, in: Capsule())
                 .foregroundStyle(.secondary)
-                .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Text("\(group.items.count) items").foregroundStyle(.secondary)
+            Text(Format.size(group.totalSize)).monospacedDigit().frame(width: 80, alignment: .trailing)
         }
         .textCase(nil)
         .padding(.vertical, 4)
