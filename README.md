@@ -34,6 +34,10 @@ daemons and helper tools, are marked with a lock: they go to the Trash too, behi
 administrator prompt per batch. Staged system extensions are listed but cannot be moved while
 System Integrity Protection is on, and the list says so.
 
+Select a row and click Details in the toolbar (⌥⌘I) for a panel beside the list, in all three
+modules: the full path, why the file is listed, which installed apps it was compared against, its
+size and date, how it will be removed, and buttons to reveal it in Finder or copy the path.
+
 **Uninstall** lists the installed apps. Pick one and Debris shows the app bundle together with
 everything it can tie to it: containers, group containers, preferences, caches, HTTP storages,
 WebKit data, saved state, launch agents, helper tools and dotfiles, each with the reason it is on
