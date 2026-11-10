@@ -8,14 +8,28 @@ public struct RemovalResult: Sendable, Identifiable {
 
     public let url: URL
     public let outcome: Outcome
+    public var size: Int64?
 
-    public init(url: URL, outcome: Outcome) {
+    public init(url: URL, outcome: Outcome, size: Int64? = nil) {
         self.url = url
         self.outcome = outcome
+        self.size = size
     }
 
     public var id: String { url.path }
     public var succeeded: Bool { if case .trashed = outcome { true } else { false } }
+}
+
+extension Array where Element == RemovalResult {
+    /// Carries the measured sizes of the removed items over to their results.
+    public func sized(from items: [LeftoverItem]) -> [RemovalResult] {
+        let sizes = Dictionary(items.map { ($0.url.path, $0.size) }, uniquingKeysWith: { first, _ in first })
+        return map { result in
+            var result = result
+            result.size = sizes[result.url.path] ?? nil
+            return result
+        }
+    }
 }
 
 /// Moves the user's own files to the Trash. Files owned by the system go through AdminRemover.

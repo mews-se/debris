@@ -82,14 +82,15 @@ final class UninstallModel {
                 removalNote = "\(report.app.name) did not quit, so the app bundle was left in place."
             }
         }
-        let related = removableSelection.filter { $0.id != report.bundle.id }
+        let selected = removableSelection
+        let related = selected.filter { $0.id != report.bundle.id }
         var own = related.filter { !$0.requiresAdmin }.map(\.url)
         var admin = related.filter(\.requiresAdmin).map(\.url)
         if bundleSelected, runningApplication == nil {
             if report.bundle.requiresAdmin { admin.append(report.bundle.url) } else { own.append(report.bundle.url) }
         }
         let results = await Task.detached { TrashExecutor.trash(own) + AdminRemover.trash(admin) }.value
-        removalResults = results
+        removalResults = results.sized(from: selected)
         showResults = true
         isRemoving = false
         let removed = Set(results.filter(\.succeeded).map(\.url.path))

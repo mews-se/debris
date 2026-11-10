@@ -69,7 +69,8 @@ final class CleanModel {
     }
 
     func trashSelected() async {
-        let urls = selectedItems.map(\.url)
+        let selected = selectedItems
+        let urls = selected.map(\.url)
         guard !urls.isEmpty else { return }
         isRemoving = true
         let results = await Task.detached { TrashExecutor.trash(urls) }.value
@@ -79,7 +80,7 @@ final class CleanModel {
             return items.isEmpty ? nil : CleanGroup(rule: group.rule, items: items)
         }
         selection.subtract(removed)
-        removalResults = results
+        removalResults = results.sized(from: selected)
         showResults = true
         isRemoving = false
     }

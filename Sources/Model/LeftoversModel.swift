@@ -79,8 +79,9 @@ final class LeftoversModel {
     /// The user's own files go first; system-owned ones follow in one batch behind the
     /// administrator prompt.
     func trashSelected() async {
-        let own = removableSelection.filter { !$0.requiresAdmin }.map(\.url)
-        let admin = removableSelection.filter(\.requiresAdmin).map(\.url)
+        let selected = removableSelection
+        let own = selected.filter { !$0.requiresAdmin }.map(\.url)
+        let admin = selected.filter(\.requiresAdmin).map(\.url)
         guard !own.isEmpty || !admin.isEmpty else { return }
         isRemoving = true
         let results = await Task.detached { TrashExecutor.trash(own) + AdminRemover.trash(admin) }.value
@@ -90,7 +91,7 @@ final class LeftoversModel {
             return items.isEmpty ? nil : GhostApp(key: group.key, title: group.title, items: items)
         }
         selection.subtract(removed)
-        removalResults = results
+        removalResults = results.sized(from: selected)
         showResults = true
         isRemoving = false
     }
