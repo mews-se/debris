@@ -10,6 +10,7 @@ final class UninstallModel {
     var isLoading = false
     var progress: ScanProgress?
     var selection: Set<String> = []
+    var focusedItemID: String?
     var isRemoving = false
     var removalResults: [RemovalResult] = []
     var showResults = false
@@ -28,6 +29,7 @@ final class UninstallModel {
     }
 
     var removableSelection: [LeftoverItem] { selectedItems.filter(\.isRemovable) }
+    var focusedItem: LeftoverItem? { report?.everything.first { $0.id == focusedItemID } }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + ($1.size ?? 0) } }
     var selectedAdminCount: Int { removableSelection.filter(\.requiresAdmin).count }
     var bundleSelected: Bool { report.map { selection.contains($0.bundle.id) } ?? false }
@@ -35,6 +37,7 @@ final class UninstallModel {
     func select(_ app: InstalledApp?, inventory: AppInventory) {
         loadTask?.cancel()
         selection = []
+        focusedItemID = nil
         report = nil
         guard let app else {
             selectedAppID = nil

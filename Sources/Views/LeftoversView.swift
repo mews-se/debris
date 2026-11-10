@@ -27,6 +27,7 @@ struct LeftoversView: View {
             Divider()
             footer
         }
+        .itemInspector(leftovers.focusedItem, module: .leftovers)
         .navigationTitle("Leftovers")
         .toolbar {
             ToolbarItemGroup {
@@ -38,6 +39,7 @@ struct LeftoversView: View {
                 .pickerStyle(.segmented)
                 .help("How sure Debris has to be before a file is listed")
                 RescanButton(hasResults: leftovers.hasScanned)
+                InspectorButton()
             }
         }
         .confirmationDialog(confirmTitle, isPresented: $confirmTrash, titleVisibility: .visible) {
@@ -86,11 +88,12 @@ struct LeftoversView: View {
     }
 
     private var resultsList: some View {
-        List {
+        List(selection: Binding(get: { leftovers.focusedItemID }, set: { leftovers.focusedItemID = $0 })) {
             ForEach(leftovers.visibleGroups) { group in
                 Section {
                     ForEach(group.items) { item in
                         ItemRow(item: item, isSelected: leftovers.isSelected(item)) { leftovers.setSelected(item, $0) }
+                            .tag(item.id)
                     }
                 } header: {
                     GroupHeader(group: group)
@@ -100,6 +103,7 @@ struct LeftoversView: View {
                 Section {
                     ForEach(leftovers.unreadable) { location in
                         Label(location.url.path, systemImage: "eye.slash").foregroundStyle(.secondary)
+                            .selectionDisabled()
                     }
                 } header: {
                     Text("Not readable without Full Disk Access")
@@ -130,6 +134,7 @@ struct LeftoversView: View {
                 Label("Move \(leftovers.removableSelection.count) to Trash (\(Format.size(leftovers.selectedSize)))", systemImage: "trash")
             }
             .buttonStyle(.borderedProminent)
+            .fixedSize()
             .disabled(leftovers.removableSelection.isEmpty || leftovers.isRemoving)
         }
         .padding(12)

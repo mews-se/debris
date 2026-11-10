@@ -25,10 +25,12 @@ struct UninstallView: View {
             detail
                 .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
         }
+        .itemInspector(uninstall.focusedItem, module: .uninstall)
         .navigationTitle("Uninstall")
         .searchable(text: $search, placement: .toolbar, prompt: "App name or identifier")
         .toolbar {
             RescanButton(hasResults: true)
+            InspectorButton()
         }
         .confirmationDialog(confirmTitle, isPresented: $confirmRemoval, titleVisibility: .visible) {
             Button(uninstall.runningApplication == nil ? "Move to Trash" : "Quit and Move to Trash", role: .destructive) {
@@ -155,9 +157,10 @@ struct UninstallView: View {
     private func itemList(_ report: AppOwnedItems) -> some View {
         let grouped = Dictionary(grouping: report.items, by: \.location.kind)
         let kinds = LeftoverLocation.Kind.allCases.filter { grouped[$0] != nil }
-        return List {
+        return List(selection: Binding(get: { uninstall.focusedItemID }, set: { uninstall.focusedItemID = $0 })) {
             Section {
                 ItemRow(item: report.bundle, isSelected: uninstall.isSelected(report.bundle), onToggle: { uninstall.setSelected(report.bundle, $0) }, showLocation: false)
+                    .tag(report.bundle.id)
             } header: {
                 sectionHeader("Application", items: [report.bundle])
             }
@@ -166,6 +169,7 @@ struct UninstallView: View {
                 Section {
                     ForEach(items) { item in
                         ItemRow(item: item, isSelected: uninstall.isSelected(item), onToggle: { uninstall.setSelected(item, $0) }, showLocation: false)
+                            .tag(item.id)
                     }
                 } header: {
                     sectionHeader(kind.rawValue, items: items)
@@ -175,6 +179,7 @@ struct UninstallView: View {
                 Section {
                     ForEach(report.unreadable) { location in
                         Label(location.url.path, systemImage: "eye.slash").foregroundStyle(.secondary)
+                            .selectionDisabled()
                     }
                 } header: {
                     Text("Not readable without Full Disk Access").textCase(nil)
@@ -216,6 +221,7 @@ struct UninstallView: View {
                       systemImage: "trash")
             }
             .buttonStyle(.borderedProminent)
+            .fixedSize()
             .disabled(uninstall.removableSelection.isEmpty || uninstall.isRemoving)
         }
         .padding(12)

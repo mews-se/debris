@@ -160,6 +160,32 @@ public struct AppInventory: Sendable {
         appGroupOwners[group.lowercased()] ?? []
     }
 
+    /// The installed apps a classification points at, to show what a file was held against.
+    /// A helper is replaced by the app it ships inside.
+    public func apps(matching ownership: Ownership) -> [InstalledApp] {
+        switch ownership {
+        case .installed(let bundleID):
+            guard let app = app(for: bundleID) else { return [] }
+            if app.isTopLevel { return [app] }
+            return [topLevelApps.first { app.url.path.hasPrefix($0.url.path + "/") } ?? app]
+        case .vendor(let vendor):
+            let wanted = vendor.lowercased()
+            return topLevelApps.filter { app in
+                let own = app.vendor.lowercased()
+                return own == wanted || own.split(separator: ".").dropFirst().first.map(String.init) == wanted
+            }
+        case .name(let name):
+            guard !name.isEmpty else { return [] }
+            return topLevelApps.filter { app in
+                let own = Identifier.normalized(app.name)
+                return own == name || (own.count >= 5 && (own.contains(name) || name.contains(own)))
+                    || IdentifierParser.nameParts(of: app.bundleID.lowercased()).contains(name)
+            }
+        case .apple, .unknown:
+            return []
+        }
+    }
+
     public func teamIsInstalled(_ teamID: String) -> Bool { teamIDs.contains(teamID) }
     public func appGroupIsInstalled(_ group: String) -> Bool { appGroups.contains(group.lowercased()) }
 }

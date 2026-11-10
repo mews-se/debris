@@ -26,9 +26,11 @@ struct CleanView: View {
             Divider()
             footer
         }
+        .itemInspector(clean.focusedItem, module: .clean)
         .navigationTitle("Clean")
         .toolbar {
             RescanButton(hasResults: clean.hasScanned)
+            InspectorButton()
         }
         .confirmationDialog(confirmTitle, isPresented: $confirmTrash, titleVisibility: .visible) {
             Button(clean.selectedRuntimes.isEmpty ? "Move to Trash" : "Remove", role: .destructive) {
@@ -71,12 +73,13 @@ struct CleanView: View {
     }
 
     private var resultsList: some View {
-        List {
+        List(selection: Binding(get: { clean.focusedItemID }, set: { clean.focusedItemID = $0 })) {
             ForEach(clean.groups) { group in
                 Section {
                     ForEach(group.items) { item in
                         ItemRow(item: item, isSelected: clean.isSelected(item), onToggle: { clean.setSelected(item, $0) },
                                 showLocation: false, badge: clean.isRunning(item) ? "Running" : nil)
+                            .tag(item.id)
                     }
                 } header: {
                     RuleHeader(group: group)
@@ -104,6 +107,7 @@ struct CleanView: View {
                       : "Remove \(clean.selectedItems.count) (\(Format.size(clean.selectedSize)))", systemImage: "trash")
             }
             .buttonStyle(.borderedProminent)
+            .fixedSize()
             .disabled(clean.selectedItems.isEmpty || clean.isRemoving)
         }
         .padding(12)

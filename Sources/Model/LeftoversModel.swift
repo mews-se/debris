@@ -11,6 +11,8 @@ final class LeftoversModel {
     var unreadable: [LeftoverLocation] = []
     var hasScanned = false
     var selection: Set<String> = []
+    /// The row the inspector describes, apart from the checkboxes that pick what is moved.
+    var focusedItemID: String?
     var minimumConfidence: Confidence = .high
     var removalResults: [RemovalResult] = []
     var showResults = false
@@ -24,6 +26,7 @@ final class LeftoversModel {
     }
 
     var visibleItems: [LeftoverItem] { visibleGroups.flatMap(\.items) }
+    var focusedItem: LeftoverItem? { visibleItems.first { $0.id == focusedItemID } }
     var selectedItems: [LeftoverItem] { visibleItems.filter { selection.contains($0.id) } }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + ($1.size ?? 0) } }
     var removableSelection: [LeftoverItem] { selectedItems.filter(\.isRemovable) }

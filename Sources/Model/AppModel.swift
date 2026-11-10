@@ -10,6 +10,7 @@ final class AppModel {
     var hasInventory = false
     var fullDiskAccess = false
     var module: Module? = .leftovers
+    var showInspector = false
 
     let leftovers = LeftoversModel()
     let uninstall = UninstallModel()

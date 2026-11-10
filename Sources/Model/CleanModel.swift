@@ -10,12 +10,14 @@ final class CleanModel {
     var progress: ScanProgress?
     var hasScanned = false
     var selection: Set<String> = []
+    var focusedItemID: String?
     var removalResults: [RemovalResult] = []
     var showResults = false
     var isRemoving = false
     private var runningBundleIDs: Set<String> = []
 
     var allItems: [LeftoverItem] { groups.flatMap(\.items) }
+    var focusedItem: LeftoverItem? { allItems.first { $0.id == focusedItemID } }
     var selectedItems: [LeftoverItem] { allItems.filter { selection.contains($0.id) } }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + ($1.size ?? 0) } }
     var totalSize: Int64 { allItems.reduce(0) { $0 + ($1.size ?? 0) } }

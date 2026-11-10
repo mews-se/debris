@@ -31,6 +31,12 @@ enum Snapshotter {
         try? await Task.sleep(for: .seconds(1))
         capture("2-leftovers-results", into: directory)
 
+        model.leftovers.focusedItemID = model.leftovers.visibleItems.first?.id
+        model.showInspector = true
+        try? await Task.sleep(for: .seconds(1))
+        capture("2b-leftovers-details", into: directory)
+        model.showInspector = false
+
         model.leftovers.minimumConfidence = .low
         try? await Task.sleep(for: .seconds(1))
         capture("3-leftovers-everything", into: directory)
@@ -54,6 +60,12 @@ enum Snapshotter {
         await model.clean.scan(inventory: model.inventory)
         try? await Task.sleep(for: .seconds(1))
         capture("5b-clean-results", into: directory)
+
+        let runtime = model.clean.allItems.first { $0.removal != .trash } ?? model.clean.allItems.first
+        model.clean.focusedItemID = runtime?.id
+        model.showInspector = true
+        try? await Task.sleep(for: .seconds(1))
+        capture("5c-clean-details", into: directory)
         NSApp.terminate(nil)
     }
 
