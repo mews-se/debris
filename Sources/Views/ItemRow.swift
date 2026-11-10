@@ -5,7 +5,7 @@ import SwiftUI
 struct ItemRow: View {
     let item: LeftoverItem
     let isSelected: Bool
-    let onToggle: (Bool) -> Void
+    let onToggle: @MainActor @Sendable (Bool) -> Void
     var showLocation = true
     var badge: String?
 
@@ -66,7 +66,7 @@ struct ItemRow: View {
 /// Checkbox for a whole section: on, off, or a dash when only some rows are selected.
 struct SelectionCheckbox: View {
     let state: Bool?
-    let onToggle: (Bool) -> Void
+    let onToggle: @MainActor @Sendable (Bool) -> Void
 
     var body: some View {
         Button {

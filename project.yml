@@ -7,7 +7,7 @@ options:
 # keeps Xcode's "update to recommended settings" triangle away - changes made in
 # its dialog land in the generated project and are lost on the next xcodegen run
 attributes:
-  LastUpgradeCheck: "2660"
+  LastUpgradeCheck: "2720"
 settings:
   base:
     DEVELOPMENT_TEAM: 4S9Z57Q8KR
