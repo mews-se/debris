@@ -51,8 +51,23 @@ image() {
 
 need_export() { [ -d "$app" ] || { echo "No export in $out, run a full release first" >&2; exit 1; }; }
 
+# certificates from the original Developer ID sub-CA stop working on 1 Feb 2027, and an
+# expiry close ahead is worth knowing before a release rather than after
+check_certificate() {
+  local pem
+  pem=$(security find-certificate -c "$identity" -p) \
+    || { echo "No certificate named \"$identity\" in the keychain" >&2; exit 1; }
+  openssl x509 -noout -issuer <<<"$pem" | grep -Eq 'OU ?= ?G2([,/]|$)' \
+    || { echo "The signing certificate is not from the G2 sub-CA, create a new one" >&2; exit 1; }
+  openssl x509 -noout -checkend 0 <<<"$pem" >/dev/null \
+    || { echo "The signing certificate has expired" >&2; exit 1; }
+  openssl x509 -noout -checkend $((30 * 86400)) <<<"$pem" >/dev/null \
+    || echo "warning: the signing certificate expires soon ($(openssl x509 -noout -enddate <<<"$pem"))" >&2
+}
+
 if [ "${1:-}" = "finish" ]; then
   need_export
+  check_certificate
   finish
   image
   exit 0
@@ -60,6 +75,7 @@ fi
 
 if [ "${1:-}" = "image" ]; then
   need_export
+  check_certificate
   image
   exit 0
 fi
@@ -76,6 +92,7 @@ fi
 
 security find-identity -v -p codesigning | grep -q "Developer ID Application" \
   || { echo "No Developer ID Application certificate in the keychain" >&2; exit 1; }
+check_certificate
 command -v create-dmg >/dev/null \
   || { echo "create-dmg is not installed (brew install create-dmg)" >&2; exit 1; }
 
