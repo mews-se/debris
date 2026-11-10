@@ -19,15 +19,17 @@ public enum FileSizer {
         return total
     }
 
+    /// Items that already carry a size, such as runtime images simctl reported, are left as they are.
     static func measure(_ items: [LeftoverItem], concurrency: Int = 6,
                         progress: (@Sendable (Int) -> Void)? = nil) async -> [LeftoverItem] {
         var result = items
+        let pending = items.indices.filter { items[$0].size == nil }
         await withTaskGroup(of: (Int, Int64).self) { group in
             var next = 0
-            var done = 0
+            var done = items.count - pending.count
             func enqueue() {
-                guard next < items.count else { return }
-                let index = next
+                guard next < pending.count else { return }
+                let index = pending[next]
                 let url = items[index].url
                 next += 1
                 group.addTask { (index, allocatedSize(of: url)) }

@@ -3,6 +3,7 @@ import Foundation
 public struct RemovalResult: Sendable, Identifiable {
     public enum Outcome: Sendable {
         case trashed(URL)
+        case deleted
         case failed(String)
     }
 
@@ -17,7 +18,8 @@ public struct RemovalResult: Sendable, Identifiable {
     }
 
     public var id: String { url.path }
-    public var succeeded: Bool { if case .trashed = outcome { true } else { false } }
+    public var succeeded: Bool { if case .failed = outcome { false } else { true } }
+    public var wasDeleted: Bool { if case .deleted = outcome { true } else { false } }
 }
 
 extension Array where Element == RemovalResult {

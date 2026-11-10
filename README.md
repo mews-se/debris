@@ -7,7 +7,7 @@
 Debris finds what is left of apps you no longer have, uninstalls apps together with everything
 they own, and clears caches and developer junk. It shows the list first, explains why each file
 is on it, and moves things to the Trash rather than deleting them, so a wrong guess is one drag
-away from undone.
+away from undone. Old simulator runtimes are the one exception: only simctl can remove them.
 
 Download the latest disk image from the
 [releases page](https://github.com/mews-se/debris/releases/latest), open it and drag Debris to
@@ -46,16 +46,20 @@ listed with the rest and go to the Trash with it, which is what `pkgutil --forge
 **Clean** removes caches, logs, developer artifacts and installer files, each behind a rule that
 says what the files are and why they are safe to remove: app caches and logs (only for apps that
 are still installed; the rest is a leftover), Xcode's build folders, caches, device support files
-and archives, unavailable simulators, the download caches of Homebrew, npm, Yarn, pip, Swift
-Package Manager, CocoaPods, Cargo, Gradle, Maven and Go, and disk images or installer packages
-sitting in Downloads. Everything is listed with its size first. Archives, device support files
-and installers are never selected for you, and neither is the cache of an app that is running.
+and archives, unavailable simulators, simulator runtimes older than the newest one for each
+platform, the download caches of Homebrew, npm, Yarn, pip, Swift Package Manager, CocoaPods,
+Cargo, Gradle, Maven and Go, and disk images or installer packages sitting in Downloads.
+Everything is listed with its size first. Archives, device support files, runtimes and installers
+are never selected for you, and neither is the cache of an app that is running. Runtimes are
+deleted through `xcrun simctl runtime delete` instead of going to the Trash, and the confirmation
+says so; Xcode downloads one again under Settings, Components.
 
 ## What it does not do
 
 It does not tune, speed up or monitor anything, and it never deletes on its own. Everything goes
-through the list and the Trash, including what needed an administrator to move: those items are
-handed over to your user on the way, so emptying the Trash needs no second password.
+through the list and, simulator runtimes aside, the Trash, including what needed an administrator
+to move: those items are handed over to your user on the way, so emptying the Trash needs no
+second password.
 
 ## Full Disk Access
 

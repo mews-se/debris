@@ -80,6 +80,11 @@ public actor CleanScanner {
                 for url in Simulators.unavailableDevices() {
                     items.append(item(at: url, location: location, rule: rule))
                 }
+            case .simulatorRuntimes:
+                guard fm.fileExists(atPath: root.path), let json = Simulators.runtimeImagesJSON() else { continue }
+                for runtime in Simulators.olderRuntimes(in: json) {
+                    items.append(runtime.item(location: location))
+                }
             }
         }
         return items
@@ -112,7 +117,79 @@ public actor CleanScanner {
     }
 }
 
-enum Simulators {
+public enum Simulators {
+    struct Runtime: Equatable {
+        let id: String
+        let platform: String
+        let version: String
+        let build: String
+        let path: String
+        let size: Int64
+        let lastUsed: Date?
+
+        func item(location: LeftoverLocation) -> LeftoverItem {
+            let used = lastUsed.map { "Last used \($0.formatted(date: .abbreviated, time: .omitted))" }
+                ?? "simctl has no record of it being used"
+            return LeftoverItem(url: URL(fileURLWithPath: path), location: location, identifier: nil,
+                                classification: Classification(ownership: .unknown, confidence: .high,
+                                                               evidence: ["\(platform) \(version) runtime, a newer \(platform) runtime is installed", used]),
+                                modified: lastUsed, size: size, displayName: "\(platform) \(version) (\(build))",
+                                removal: .simulatorRuntime(id: id))
+        }
+    }
+
+    static func runtimeImagesJSON() -> Data? {
+        (try? Shell.run("/usr/bin/xcrun", ["simctl", "runtime", "list", "-j"], timeout: 30))?.data(using: .utf8)
+    }
+
+    /// Deletable runtime images except the newest version of each platform, oldest first.
+    static func olderRuntimes(in json: Data) -> [Runtime] {
+        guard let root = try? JSONSerialization.jsonObject(with: json) as? [String: [String: Any]] else { return [] }
+        let dates = ISO8601DateFormatter()
+        let runtimes: [Runtime] = root.values.compactMap { image in
+            guard (image["deletable"] as? Bool) == true,
+                  let id = image["identifier"] as? String,
+                  let version = image["version"] as? String,
+                  let path = image["path"] as? String
+            else { return nil }
+            let platform = platformName(image["platformIdentifier"] as? String ?? "")
+            return Runtime(id: id, platform: platform, version: version, build: image["build"] as? String ?? "",
+                           path: path, size: (image["sizeBytes"] as? NSNumber)?.int64Value ?? 0,
+                           lastUsed: (image["lastUsedAt"] as? String).flatMap(dates.date(from:)))
+        }
+        let older: (String, String) -> Bool = { $0.compare($1, options: .numeric) == .orderedAscending }
+        let newest = Dictionary(grouping: runtimes, by: \.platform).compactMapValues { $0.map(\.version).max(by: older) }
+        return runtimes
+            .filter { newest[$0.platform] != $0.version }
+            .sorted { $0.platform == $1.platform ? older($0.version, $1.version) : $0.platform < $1.platform }
+    }
+
+    static func platformName(_ identifier: String) -> String {
+        switch identifier {
+        case "com.apple.platform.iphonesimulator": "iOS"
+        case "com.apple.platform.watchsimulator": "watchOS"
+        case "com.apple.platform.appletvsimulator": "tvOS"
+        case "com.apple.platform.xrsimulator": "visionOS"
+        default: identifier.split(separator: ".").last.map(String.init) ?? "Simulator"
+        }
+    }
+
+    /// Runs simctl for each runtime item. A booted simulator on that runtime is shut down first,
+    /// which simctl does on its own.
+    public static func deleteRuntimes(_ items: [LeftoverItem]) -> [RemovalResult] {
+        items.compactMap { item in
+            guard case .simulatorRuntime(let id) = item.removal else { return nil }
+            do {
+                _ = try Shell.run("/usr/bin/xcrun", ["simctl", "runtime", "delete", id], timeout: 300)
+                return RemovalResult(url: item.url, outcome: .deleted)
+            } catch let failure as Shell.Failure {
+                return RemovalResult(url: item.url, outcome: .failed(failure.output.trimmingCharacters(in: .whitespacesAndNewlines)))
+            } catch {
+                return RemovalResult(url: item.url, outcome: .failed(error.localizedDescription))
+            }
+        }
+    }
+
     /// Device folders simctl reports as unavailable, which is what it says when the runtime is gone.
     static func unavailableDevices() -> [URL] {
         guard let json = try? Shell.run("/usr/bin/xcrun", ["simctl", "list", "devices", "-j"], timeout: 30),

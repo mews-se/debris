@@ -43,6 +43,14 @@ public struct Classification: Sendable, Hashable {
     }
 }
 
+/// How an item leaves the Mac once it is selected.
+public enum Removal: Sendable, Hashable {
+    /// Moved to the Trash, behind an administrator prompt when the system owns it.
+    case trash
+    /// Deleted outright by simctl, the only thing that can remove a simulator runtime image.
+    case simulatorRuntime(id: String)
+}
+
 public struct LeftoverItem: Sendable, Hashable, Identifiable {
     public let url: URL
     public let location: LeftoverLocation
@@ -52,9 +60,13 @@ public struct LeftoverItem: Sendable, Hashable, Identifiable {
     public var size: Int64?
     /// Set when the item can be listed but not moved, with the reason to show.
     public var blockedReason: String?
+    /// Shown instead of the file name when the name says nothing, as for a runtime image.
+    public var displayName: String?
+    public var removal: Removal
 
     public init(url: URL, location: LeftoverLocation, identifier: String?,
-                classification: Classification, modified: Date?, size: Int64? = nil, blockedReason: String? = nil) {
+                classification: Classification, modified: Date?, size: Int64? = nil, blockedReason: String? = nil,
+                displayName: String? = nil, removal: Removal = .trash) {
         self.url = url
         self.location = location
         self.identifier = identifier
@@ -62,10 +74,13 @@ public struct LeftoverItem: Sendable, Hashable, Identifiable {
         self.modified = modified
         self.size = size
         self.blockedReason = blockedReason
+        self.displayName = displayName
+        self.removal = removal
     }
 
     public var id: String { url.path }
     public var name: String { url.lastPathComponent }
+    public var title: String { displayName ?? name }
     public var requiresAdmin: Bool { location.domain == .system }
     public var isRemovable: Bool { blockedReason == nil }
     public var groupKey: String { Grouping.key(identifier: identifier, name: name) }

@@ -68,12 +68,16 @@ final class CleanModel {
         for item in group.items { setSelected(item, on) }
     }
 
+    /// Selected simulator runtimes, which simctl deletes instead of the Trash taking them.
+    var selectedRuntimes: [LeftoverItem] { selectedItems.filter { $0.removal != .trash } }
+
     func trashSelected() async {
         let selected = selectedItems
-        let urls = selected.map(\.url)
-        guard !urls.isEmpty else { return }
+        let urls = selected.filter { $0.removal == .trash }.map(\.url)
+        let runtimes = selectedRuntimes
+        guard !selected.isEmpty else { return }
         isRemoving = true
-        let results = await Task.detached { TrashExecutor.trash(urls) }.value
+        let results = await Task.detached { TrashExecutor.trash(urls) + Simulators.deleteRuntimes(runtimes) }.value
         let removed = Set(results.filter(\.succeeded).map(\.url.path))
         groups = groups.compactMap { group in
             let items = group.items.filter { !removed.contains($0.url.path) }

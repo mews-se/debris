@@ -44,7 +44,7 @@ struct DebrisCLI {
                 print("\n\(group.rule.title) [\(group.rule.category.rawValue)]  \(formatter.string(fromByteCount: group.totalSize))\(group.rule.selectedByDefault ? "" : "  (not selected by default)")")
                 for item in group.items {
                     let size = item.size.map { formatter.string(fromByteCount: $0) } ?? "?"
-                    print("  \(size.padding(toLength: 10, withPad: " ", startingAt: 0)) \(item.url.path)")
+                    print("  \(size.padding(toLength: 10, withPad: " ", startingAt: 0)) \(item.displayName.map { "\($0)  " } ?? "")\(item.url.path)")
                 }
             }
             let total = groups.reduce(Int64(0)) { $0 + $1.totalSize }

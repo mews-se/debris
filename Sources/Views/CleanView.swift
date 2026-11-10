@@ -30,24 +30,38 @@ struct CleanView: View {
         .toolbar {
             RescanButton(hasResults: clean.hasScanned)
         }
-        .confirmationDialog("Move \(clean.selectedItems.count) items (\(Format.size(clean.selectedSize))) to the Trash?",
-                            isPresented: $confirmTrash, titleVisibility: .visible) {
-            Button("Move to Trash", role: .destructive) {
+        .confirmationDialog(confirmTitle, isPresented: $confirmTrash, titleVisibility: .visible) {
+            Button(clean.selectedRuntimes.isEmpty ? "Move to Trash" : "Remove", role: .destructive) {
                 Task { await clean.trashSelected() }
             }
         } message: {
-            Text("They stay in the Trash until you empty it.")
+            Text(confirmMessage)
         }
         .sheet(isPresented: $clean.showResults) {
             RemovalResultsSheet(results: clean.removalResults) { clean.showResults = false }
         }
     }
 
+    private var confirmTitle: String {
+        let size = Format.size(clean.selectedSize)
+        return clean.selectedRuntimes.isEmpty
+            ? "Move \(clean.selectedItems.count) items (\(size)) to the Trash?"
+            : "Remove \(clean.selectedItems.count) items (\(size))?"
+    }
+
+    private var confirmMessage: String {
+        let runtimes = clean.selectedRuntimes.count
+        guard runtimes > 0 else { return "They stay in the Trash until you empty it." }
+        let deleted = runtimes == 1 ? "The simulator runtime is" : "The \(runtimes) simulator runtimes are"
+        let rest = runtimes == clean.selectedItems.count ? "" : " Everything else stays in the Trash until you empty it."
+        return "\(deleted) deleted right away and cannot be put back. Xcode downloads a runtime again when it is needed.\(rest)"
+    }
+
     private var intro: some View {
         ContentUnavailableView {
             Label("Clear caches, logs and developer junk", systemImage: "sparkles")
         } description: {
-            Text("Each rule names a place, says what lives there and why it is safe to move. App caches are only listed for apps that are still installed; build folders, device support files, package manager caches and installers in Downloads come with their sizes so you can decide.")
+            Text("Each rule names a place, says what lives there and why it is safe to move. App caches are only listed for apps that are still installed; build folders, device support files, older simulator runtimes, package manager caches and installers in Downloads come with their sizes so you can decide.")
                 .frame(maxWidth: 520)
         } actions: {
             Button("Scan Now") { Task { await clean.scan(inventory: model.inventory) } }
@@ -85,7 +99,9 @@ struct CleanView: View {
             Button {
                 confirmTrash = true
             } label: {
-                Label("Move \(clean.selectedItems.count) to Trash (\(Format.size(clean.selectedSize)))", systemImage: "trash")
+                Label(clean.selectedRuntimes.isEmpty
+                      ? "Move \(clean.selectedItems.count) to Trash (\(Format.size(clean.selectedSize)))"
+                      : "Remove \(clean.selectedItems.count) (\(Format.size(clean.selectedSize)))", systemImage: "trash")
             }
             .buttonStyle(.borderedProminent)
             .disabled(clean.selectedItems.isEmpty || clean.isRemoving)

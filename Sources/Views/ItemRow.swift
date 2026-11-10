@@ -16,7 +16,7 @@ struct ItemRow: View {
                 .labelsHidden()
                 .disabled(!item.isRemovable)
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.name).lineLimit(1).truncationMode(.middle)
+                Text(item.title).lineLimit(1).truncationMode(.middle)
                 Text(Format.homeRelative(item.url))
                     .font(.caption)
                     .foregroundStyle(.secondary)

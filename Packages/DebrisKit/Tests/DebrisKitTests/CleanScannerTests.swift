@@ -23,7 +23,7 @@ struct CleanScannerTests {
     }
 
     func groups(home: URL) async -> [String: [String]] {
-        let rules = CleanCatalog.standard(home: home, environment: [:]).filter { $0.scope != .unavailableSimulators }
+        let rules = CleanCatalog.standard(home: home, environment: [:]).filter { ![.unavailableSimulators, .simulatorRuntimes].contains($0.scope) }
         let scanner = CleanScanner(inventory: inventory, rules: rules)
         let result = await scanner.scan(measureSizes: false)
         return Dictionary(uniqueKeysWithValues: result.map { ($0.rule.id, $0.items.map(\.name)) })
@@ -46,5 +46,32 @@ struct CleanScannerTests {
         #expect(result["installers"] == ["Installer.dmg", "Tool.PKG", "folder.dmg"])
         #expect(result["pip"] == nil, "an empty cache folder is not listed")
         #expect(result["cargo"] == nil)
+    }
+
+    @Test func olderRuntimesLeaveTheNewestOfEachPlatform() throws {
+        let json = """
+        {
+          "A": {"identifier": "A", "deletable": true, "version": "26.5", "build": "23F77", "platformIdentifier": "com.apple.platform.iphonesimulator",
+                "path": "/System/Library/AssetsV2/a", "sizeBytes": 8494282293, "lastUsedAt": "2026-11-07T00:49:41Z"},
+          "B": {"identifier": "B", "deletable": true, "version": "27.1", "build": "24A94425", "platformIdentifier": "com.apple.platform.iphonesimulator",
+                "path": "/System/Library/AssetsV2/b", "sizeBytes": 7874743137},
+          "C": {"identifier": "C", "deletable": true, "version": "9.3", "build": "13E233", "platformIdentifier": "com.apple.platform.iphonesimulator",
+                "path": "/c", "sizeBytes": 1},
+          "D": {"identifier": "D", "deletable": false, "version": "28.0", "build": "25A1", "platformIdentifier": "com.apple.platform.iphonesimulator",
+                "path": "/d", "sizeBytes": 1},
+          "E": {"identifier": "E", "deletable": true, "version": "12.0", "build": "23R1", "platformIdentifier": "com.apple.platform.watchsimulator",
+                "path": "/e", "sizeBytes": 1}
+        }
+        """
+        let older = Simulators.olderRuntimes(in: Data(json.utf8))
+        #expect(older.map(\.id) == ["C", "A"], "9.3 sorts before 26.5, 27.1 is the newest one simctl may delete, watchOS has only one")
+
+        let location = LeftoverLocation(kind: .developer, domain: .user, url: URL(fileURLWithPath: "/Library/Developer/CoreSimulator"))
+        let item = try #require(older.last).item(location: location)
+        #expect(item.title == "iOS 26.5 (23F77)")
+        #expect(item.size == 8494282293)
+        #expect(item.modified != nil)
+        #expect(item.removal == .simulatorRuntime(id: "A"))
+        #expect(!item.requiresAdmin)
     }
 }

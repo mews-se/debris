@@ -22,6 +22,8 @@ public struct CleanRule: Sendable, Identifiable, Hashable {
         case installers
         /// Simulator devices whose runtime is gone, found through simctl.
         case unavailableSimulators
+        /// Simulator runtime images other than the newest one per platform, found through simctl.
+        case simulatorRuntimes
     }
 
     public let id: String

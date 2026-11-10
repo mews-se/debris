@@ -2,7 +2,8 @@ import Foundation
 
 public enum CleanCatalog {
     public static func standard(home: URL = FileManager.default.homeDirectoryForCurrentUser,
-                                environment: [String: String] = ProcessInfo.processInfo.environment) -> [CleanRule] {
+                                environment: [String: String] = ProcessInfo.processInfo.environment,
+                                systemDeveloper: URL = URL(fileURLWithPath: "/Library/Developer")) -> [CleanRule] {
         let library = home.appendingPathComponent("Library")
         let caches = library.appendingPathComponent("Caches")
         let developer = library.appendingPathComponent("Developer")
@@ -35,6 +36,11 @@ public enum CleanCatalog {
                       what: "Simulator devices whose runtime is no longer installed.",
                       why: "They cannot boot without their runtime. xcrun simctl delete unavailable removes the same devices.",
                       paths: [developer.appendingPathComponent("CoreSimulator/Devices")], scope: .unavailableSimulators, kind: .developer),
+            CleanRule(id: "simulator-runtimes", category: .developer, title: "Older simulator runtimes",
+                      what: "The iOS, watchOS, tvOS and visionOS systems the simulators run, several gigabytes each. The newest one for each platform is not listed.",
+                      why: "Xcode downloads a runtime again under Settings, Components. These are deleted right away through simctl instead of going to the Trash, and simulators made for them show up under Unavailable simulators afterwards, so pick the versions yourself.",
+                      paths: [systemDeveloper.appendingPathComponent("CoreSimulator")], scope: .simulatorRuntimes, kind: .developer,
+                      selectedByDefault: false),
             CleanRule(id: "xcode-caches", category: .developer, title: "Xcode caches",
                       what: "Xcode's own caches: downloaded assets, the documentation index and the simulator's dyld caches.",
                       why: "Rebuilt or downloaded again as needed.",
