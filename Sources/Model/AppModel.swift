@@ -23,8 +23,20 @@ final class AppModel {
         Snapshotter.log("inventory: \(inventory.topLevelApps.count) apps")
     }
 
+    /// Called at launch, from the banner and whenever Debris comes back to the front, which is
+    /// what happens after the switch is flipped in System Settings. Results scanned without
+    /// access are scanned again once it is there.
     func refreshPermissions() {
-        fullDiskAccess = FullDiskAccess.isGranted()
+        let granted = FullDiskAccess.isGranted()
+        let gained = granted && !fullDiskAccess
+        fullDiskAccess = granted
+        guard gained, hasInventory, !isBusy else { return }
+        let hasResults = switch module {
+        case .leftovers: leftovers.hasScanned
+        case .uninstall: uninstall.report != nil
+        case .clean, nil: false
+        }
+        if hasResults { Task { await rescan() } }
     }
 
     func refreshInventory() async {

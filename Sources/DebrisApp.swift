@@ -26,6 +26,9 @@ struct DebrisApp: App {
                 .environment(model)
                 .frame(minWidth: 900, minHeight: 560)
                 .task { await model.start() }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    model.refreshPermissions()
+                }
         }
         .defaultSize(width: 1120, height: 720)
         .commands {
