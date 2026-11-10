@@ -38,8 +38,8 @@ macOS 15 or later. The app is not sandboxed and is signed for Developer ID, not 
 commit that. `scripts/release.sh` then archives a Release build, exports it signed with the
 Developer ID Application certificate, sends the zip to Apple's notary service, staples the ticket
 and wraps the stapled app in a drag-to-Applications disk image, which is signed, notarized and
-stapled on its own. It leaves `build/release/Debris-1.2.zip` and `Debris-1.2.dmg` with their
-SHA-256 printed for the GitHub release. It needs the certificate in the keychain, notarytool
+stapled on its own. It leaves `build.noindex/release/Debris-1.2.zip` and `Debris-1.2.dmg` with
+their SHA-256 printed for the GitHub release. It needs the certificate in the keychain, notarytool
 credentials stored once with `xcrun notarytool store-credentials debris`, and create-dmg from
 Homebrew. If the notary service takes longer than you can wait, `scripts/release.sh finish`
 staples the same export, zips it and builds the disk image once

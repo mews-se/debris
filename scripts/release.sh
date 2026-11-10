@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds a notarized Developer ID release of Debris.
 #
-#   scripts/release.sh             archive, export, notarize, staple, zip and dmg into build/release
+#   scripts/release.sh             archive, export, notarize, staple, zip and dmg into build.noindex/release
 #   scripts/release.sh finish      staple, zip and dmg an export whose notarization finished later
 #   scripts/release.sh image       rebuild, sign, notarize and staple only the dmg
 #   scripts/release.sh bump 1.1    set the version in project.yml and regenerate the project
@@ -14,7 +14,8 @@ cd "$(dirname "$0")/.."
 
 profile=${NOTARY_PROFILE:-debris}
 identity=${CODESIGN_IDENTITY:-Developer ID Application}
-out=build/release
+# .noindex keeps Spotlight from listing every exported Debris.app next to the installed one
+out=build.noindex/release
 
 version() { sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' project.yml; }
 build_number() { sed -n 's/^ *CURRENT_PROJECT_VERSION: "\(.*\)"$/\1/p' project.yml; }
@@ -101,7 +102,7 @@ mkdir -p "$out"
 xcodegen generate >/dev/null
 
 xcodebuild -project Debris.xcodeproj -scheme Debris -configuration Release \
-  -derivedDataPath build/DerivedData -archivePath "$out/Debris.xcarchive" archive | tail -2
+  -derivedDataPath build.noindex/DerivedData -archivePath "$out/Debris.xcarchive" archive | tail -2
 xcodebuild -exportArchive -archivePath "$out/Debris.xcarchive" \
   -exportOptionsPlist scripts/ExportOptions.plist -exportPath "$out/export" | tail -2
 

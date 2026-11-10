@@ -1,6 +1,7 @@
 Debris.xcodeproj
 .DS_Store
 build/
+build.noindex/
 .build/
 .swiftpm/
 DerivedData/
