@@ -81,8 +81,9 @@ public actor CleanScanner {
                     items.append(item(at: url, location: location, rule: rule))
                 }
             case .simulatorRuntimes:
-                guard fm.fileExists(atPath: root.path), let json = Simulators.runtimeImagesJSON() else { continue }
-                for runtime in Simulators.olderRuntimes(in: json) {
+                guard fm.fileExists(atPath: root.path), let images = Simulators.runtimeImagesJSON(),
+                      let runtimes = Simulators.runtimesJSON() else { continue }
+                for runtime in Simulators.olderRuntimes(images: images, runtimes: runtimes) {
                     items.append(runtime.item(location: location))
                 }
             }
@@ -126,15 +127,41 @@ public enum Simulators {
         let path: String
         let size: Int64
         let lastUsed: Date?
+        var coveredBy: [String] = []
 
         func item(location: LeftoverLocation) -> LeftoverItem {
             let used = lastUsed.map { "Last used \($0.formatted(date: .abbreviated, time: .omitted))" }
                 ?? "simctl has no record of it being used"
+            let newer = coveredBy.count < 2 ? coveredBy.joined()
+                : coveredBy.dropLast().joined(separator: ", ") + " or " + coveredBy.last!
             return LeftoverItem(url: URL(fileURLWithPath: path), location: location, identifier: nil,
                                 classification: Classification(ownership: .unknown, confidence: .high,
-                                                               evidence: ["\(platform) \(version) runtime, a newer \(platform) runtime is installed", used]),
+                                                               evidence: ["Every device it simulates also runs on \(newer)", used]),
                                 modified: lastUsed, size: size, displayName: "\(platform) \(version) (\(build))",
                                 removal: .simulatorRuntime(id: id))
+        }
+    }
+
+    /// A runtime as simctl list runtimes reports it, with the deletable images behind it.
+    private struct Installed {
+        let identifier: String
+        let name: String
+        let platform: String
+        let version: String
+        let build: String
+        let bundlePath: String
+        let available: Bool
+        let deviceTypes: Set<String>
+        var images: [Runtime] = []
+
+        var title: String { "\(name) (\(build))" }
+
+        func isOlder(than other: Installed) -> Bool {
+            let version = version.compare(other.version, options: .numeric)
+            if version != .orderedSame { return version == .orderedAscending }
+            let build = build.compare(other.build, options: .numeric)
+            if build != .orderedSame { return build == .orderedAscending }
+            return bundlePath < other.bundlePath
         }
     }
 
@@ -142,26 +169,74 @@ public enum Simulators {
         (try? Shell.run("/usr/bin/xcrun", ["simctl", "runtime", "list", "-j"], timeout: 30))?.data(using: .utf8)
     }
 
-    /// Deletable runtime images except the newest version of each platform, oldest first.
-    static func olderRuntimes(in json: Data) -> [Runtime] {
-        guard let root = try? JSONSerialization.jsonObject(with: json) as? [String: [String: Any]] else { return [] }
+    static func runtimesJSON() -> Data? {
+        (try? Shell.run("/usr/bin/xcrun", ["simctl", "list", "-j", "runtimes"], timeout: 30))?.data(using: .utf8)
+    }
+
+    /// Deletable runtime images whose device types all run on a newer runtime that stays, oldest first.
+    /// `images` is simctl runtime list, `runtimes` is simctl list runtimes, which knows the device types.
+    /// A device-specific build only covers its own devices, so it never makes a general runtime look old.
+    static func olderRuntimes(images: Data, runtimes: Data) -> [Runtime] {
+        guard let imageRoot = try? JSONSerialization.jsonObject(with: images) as? [String: [String: Any]],
+              let runtimeRoot = try? JSONSerialization.jsonObject(with: runtimes) as? [String: Any],
+              let listed = runtimeRoot["runtimes"] as? [[String: Any]]
+        else { return [] }
+
+        var installed: [Installed] = listed.compactMap { entry in
+            guard let identifier = entry["identifier"] as? String,
+                  let name = entry["name"] as? String,
+                  let version = entry["version"] as? String,
+                  let build = entry["buildversion"] as? String
+            else { return nil }
+            let types = (entry["supportedDeviceTypes"] as? [[String: Any]] ?? []).compactMap { $0["identifier"] as? String }
+            return Installed(identifier: identifier, name: name, platform: entry["platform"] as? String ?? "",
+                             version: version, build: build, bundlePath: entry["bundlePath"] as? String ?? "",
+                             available: (entry["isAvailable"] as? Bool) == true, deviceTypes: Set(types))
+        }
+
         let dates = ISO8601DateFormatter()
-        let runtimes: [Runtime] = root.values.compactMap { image in
-            guard (image["deletable"] as? Bool) == true,
-                  let id = image["identifier"] as? String,
+        for image in imageRoot.values where (image["deletable"] as? Bool) == true {
+            guard let id = image["identifier"] as? String,
                   let version = image["version"] as? String,
                   let path = image["path"] as? String
-            else { return nil }
-            let platform = platformName(image["platformIdentifier"] as? String ?? "")
-            return Runtime(id: id, platform: platform, version: version, build: image["build"] as? String ?? "",
-                           path: path, size: (image["sizeBytes"] as? NSNumber)?.int64Value ?? 0,
-                           lastUsed: (image["lastUsedAt"] as? String).flatMap(dates.date(from:)))
+            else { continue }
+            let build = image["build"] as? String ?? ""
+            let bundlePath = image["runtimeBundlePath"] as? String ?? ""
+            let runtimeID = image["runtimeIdentifier"] as? String ?? ""
+            // an image simctl list runtimes does not report has unknown device types and is never listed
+            guard let index = installed.indices.first(where: {
+                (!bundlePath.isEmpty && installed[$0].bundlePath == bundlePath)
+                    || (installed[$0].identifier == runtimeID && installed[$0].build == build)
+            }) else { continue }
+            installed[index].images.append(Runtime(id: id, platform: platformName(image["platformIdentifier"] as? String ?? ""),
+                                                   version: version, build: build, path: path,
+                                                   size: (image["sizeBytes"] as? NSNumber)?.int64Value ?? 0,
+                                                   lastUsed: (image["lastUsedAt"] as? String).flatMap(dates.date(from:))))
         }
-        let older: (String, String) -> Bool = { $0.compare($1, options: .numeric) == .orderedAscending }
-        let newest = Dictionary(grouping: runtimes, by: \.platform).compactMapValues { $0.map(\.version).max(by: older) }
-        return runtimes
-            .filter { newest[$0.platform] != $0.version }
-            .sorted { $0.platform == $1.platform ? older($0.version, $1.version) : $0.platform < $1.platform }
+
+        var older: [Runtime] = []
+        for platform in Dictionary(grouping: installed, by: \.platform).values {
+            var staying: [Installed] = []
+            for runtime in platform.sorted(by: { $1.isOlder(than: $0) }) {
+                let covering = staying.filter { !$0.deviceTypes.isDisjoint(with: runtime.deviceTypes) }
+                let covered = covering.reduce(into: Set<String>()) { $0.formUnion($1.deviceTypes) }
+                if !runtime.images.isEmpty, !runtime.deviceTypes.isEmpty, runtime.deviceTypes.isSubset(of: covered) {
+                    older += runtime.images.map { image in
+                        var image = image
+                        image.coveredBy = covering.reversed().map(\.title)
+                        return image
+                    }
+                } else if runtime.available {
+                    staying.append(runtime)
+                }
+            }
+        }
+        return older.sorted {
+            if $0.platform != $1.platform { return $0.platform < $1.platform }
+            let version = $0.version.compare($1.version, options: .numeric)
+            if version != .orderedSame { return version == .orderedAscending }
+            return $0.build.compare($1.build, options: .numeric) == .orderedAscending
+        }
     }
 
     static func platformName(_ identifier: String) -> String {

@@ -48,30 +48,119 @@ struct CleanScannerTests {
         #expect(result["cargo"] == nil)
     }
 
-    @Test func olderRuntimesLeaveTheNewestOfEachPlatform() throws {
-        let json = """
-        {
-          "A": {"identifier": "A", "deletable": true, "version": "26.5", "build": "23F77", "platformIdentifier": "com.apple.platform.iphonesimulator",
-                "path": "/System/Library/AssetsV2/a", "sizeBytes": 8494282293, "lastUsedAt": "2026-11-07T00:49:41Z"},
-          "B": {"identifier": "B", "deletable": true, "version": "27.1", "build": "24A94425", "platformIdentifier": "com.apple.platform.iphonesimulator",
-                "path": "/System/Library/AssetsV2/b", "sizeBytes": 7874743137},
-          "C": {"identifier": "C", "deletable": true, "version": "9.3", "build": "13E233", "platformIdentifier": "com.apple.platform.iphonesimulator",
-                "path": "/c", "sizeBytes": 1},
-          "D": {"identifier": "D", "deletable": false, "version": "28.0", "build": "25A1", "platformIdentifier": "com.apple.platform.iphonesimulator",
-                "path": "/d", "sizeBytes": 1},
-          "E": {"identifier": "E", "deletable": true, "version": "12.0", "build": "23R1", "platformIdentifier": "com.apple.platform.watchsimulator",
-                "path": "/e", "sizeBytes": 1}
-        }
-        """
-        let older = Simulators.olderRuntimes(in: Data(json.utf8))
-        #expect(older.map(\.id) == ["C", "A"], "9.3 sorts before 26.5, 27.1 is the newest one simctl may delete, watchOS has only one")
+    let general = ["iPhone-17", "iPhone-17-Pro", "iPhone-Air", "iPad-Pro-13-inch-M5"]
+
+    @Test func generalRuntimeStaysBesideADeviceSpecificBuild() throws {
+        var simctl = Simctl()
+        simctl.add("A", "27.0", "24A5355", devices: general)
+        simctl.add("B", "27.1", "24A94425", devices: ["iPhone-Duo"])
+        #expect(try simctl.older() == [], "27.1 only runs the iPhone Duo, so 27.0 is the last runtime for every other device")
+
+        simctl.add("C", "26.5", "23F77", devices: general)
+        #expect(try simctl.older() == ["C"])
+    }
+
+    @Test func olderRuntimeIsListedWhenANewerOneRunsAllItsDevices() throws {
+        var simctl = Simctl()
+        simctl.add("A", "26.5", "23F77", devices: general, size: 8494282293, lastUsed: "2026-11-07T00:49:41Z")
+        simctl.add("B", "27.0", "24A5355", devices: general + ["iPhone-18"])
+        let older = try simctl.olderRuntimes()
+        #expect(older.map(\.id) == ["A"])
 
         let location = LeftoverLocation(kind: .developer, domain: .user, url: URL(fileURLWithPath: "/Library/Developer/CoreSimulator"))
-        let item = try #require(older.last).item(location: location)
+        let item = try #require(older.first).item(location: location)
         #expect(item.title == "iOS 26.5 (23F77)")
+        #expect(item.classification.evidence.first == "Every device it simulates also runs on iOS 27.0 (24A5355)")
         #expect(item.size == 8494282293)
         #expect(item.modified != nil)
         #expect(item.removal == .simulatorRuntime(id: "A"))
         #expect(!item.requiresAdmin)
     }
+
+    @Test func newerBuildsCoverOlderGeneralAndDeviceSpecificOnes() throws {
+        var simctl = Simctl()
+        simctl.add("A", "27.0", "24A5355", devices: general)
+        simctl.add("B", "27.1", "24A94425", devices: ["iPhone-Duo"])
+        simctl.add("C", "27.2", "24B8117", devices: general)
+        simctl.add("D", "27.2", "24B91016s", devices: ["iPhone-Duo"])
+        let older = try simctl.olderRuntimes()
+        #expect(older.map(\.id) == ["A", "B"])
+        #expect(older.map(\.coveredBy) == [["iOS 27.2 (24B8117)"], ["iOS 27.2 (24B91016s)"]])
+    }
+
+    @Test func runtimeStaysWhileItIsTheLastForADevice() throws {
+        var simctl = Simctl()
+        simctl.add("A", "26.5", "23F77", devices: ["iPhone-11"] + general)
+        simctl.add("B", "27.0", "24A5355", devices: general)
+        #expect(try simctl.older() == [], "27.0 no longer runs the iPhone 11")
+    }
+
+    @Test func onlyRuntimesThatStayCoverOlderOnes() throws {
+        var kept = Simctl()
+        kept.add("A", "27.0", "24A5355", devices: general)
+        kept.add("B", "27.2", "24C5089", devices: general, deletable: false)
+        #expect(try kept.older() == ["A"], "a runtime simctl cannot delete stays")
+
+        var unavailable = Simctl()
+        unavailable.add("A", "27.0", "24A5355", devices: general)
+        unavailable.add("B", "27.2", "24C5089", devices: general, available: false)
+        #expect(try unavailable.older() == [], "a runtime that cannot run covers nothing")
+
+        var platforms = Simctl()
+        platforms.add("A", "27.0", "24A5355", devices: general)
+        platforms.add("B", "26.0", "23R354", devices: ["Apple-Watch-Series-11-46mm"], platform: "watchOS")
+        #expect(try platforms.older() == [])
+    }
+
+    @Test func runtimesWithUnknownDevicesAreNeverListed() throws {
+        var unlisted = Simctl()
+        unlisted.add("A", "26.5", "23F77", devices: general, listed: false)
+        unlisted.add("B", "27.0", "24A5355", devices: general)
+        #expect(try unlisted.older() == [], "simctl list runtimes does not report it")
+
+        var empty = Simctl()
+        empty.add("A", "26.5", "23F77", devices: [])
+        empty.add("B", "27.0", "24A5355", devices: general)
+        #expect(try empty.older() == [])
+
+        var unmounted = Simctl()
+        unmounted.add("A", "26.5", "23F77", devices: general, mounted: false)
+        unmounted.add("B", "27.0", "24A5355", devices: general)
+        #expect(try unmounted.older() == ["A"], "matched by runtime identifier and build")
+    }
+}
+
+/// What simctl runtime list -j and simctl list -j runtimes print for a set of runtimes.
+private struct Simctl {
+    var images: [String: Any] = [:]
+    var runtimes: [[String: Any]] = []
+
+    mutating func add(_ id: String, _ version: String, _ build: String, devices: [String], platform: String = "iOS",
+                      size: Int64 = 8_000_000_000, lastUsed: String? = nil, deletable: Bool = true, available: Bool = true,
+                      listed: Bool = true, mounted: Bool = true) {
+        let runtimeID = "com.apple.CoreSimulator.SimRuntime.\(platform)-\(version.replacingOccurrences(of: ".", with: "-"))"
+        let bundlePath = "/private/var/run/com.apple.security.cryptexd/mnt/\(id)/Library/Developer/CoreSimulator/Profiles/Runtimes/\(platform) \(version).simruntime"
+        var image: [String: Any] = [
+            "identifier": id, "deletable": deletable, "version": version, "build": build, "sizeBytes": size,
+            "platformIdentifier": platform == "watchOS" ? "com.apple.platform.watchsimulator" : "com.apple.platform.iphonesimulator",
+            "path": "/System/Library/AssetsV2/com_apple_MobileAsset_\(platform)SimulatorRuntime/\(id).asset/AssetData",
+            "runtimeIdentifier": runtimeID, "state": "Ready",
+        ]
+        if mounted { image["runtimeBundlePath"] = bundlePath }
+        if let lastUsed { image["lastUsedAt"] = lastUsed }
+        images[id] = image
+        guard listed else { return }
+        runtimes.append([
+            "identifier": runtimeID, "name": "\(platform) \(version)", "platform": platform, "version": version,
+            "buildversion": build, "bundlePath": bundlePath, "isAvailable": available,
+            "supportedDeviceTypes": devices.map { ["identifier": "com.apple.CoreSimulator.SimDeviceType.\($0)", "name": $0] },
+        ])
+    }
+
+    func olderRuntimes() throws -> [Simulators.Runtime] {
+        Simulators.olderRuntimes(images: try JSONSerialization.data(withJSONObject: images),
+                                 runtimes: try JSONSerialization.data(withJSONObject: ["runtimes": runtimes]))
+    }
+
+    func older() throws -> [String] { try olderRuntimes().map(\.id) }
 }

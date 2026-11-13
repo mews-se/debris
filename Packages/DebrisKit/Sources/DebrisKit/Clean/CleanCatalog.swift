@@ -37,7 +37,7 @@ public enum CleanCatalog {
                       why: "They cannot boot without their runtime. xcrun simctl delete unavailable removes the same devices.",
                       paths: [developer.appendingPathComponent("CoreSimulator/Devices")], scope: .unavailableSimulators, kind: .developer),
             CleanRule(id: "simulator-runtimes", category: .developer, title: "Older simulator runtimes",
-                      what: "The iOS, watchOS, tvOS and visionOS systems the simulators run, several gigabytes each. The newest one for each platform is not listed.",
+                      what: "The iOS, watchOS, tvOS and visionOS systems the simulators run, several gigabytes each. A runtime is only listed when every device it simulates also runs on a newer one that stays.",
                       why: "Xcode downloads a runtime again under Settings, Components. These are deleted right away through simctl instead of going to the Trash, and simulators made for them show up under Unavailable simulators afterwards, so pick the versions yourself.",
                       paths: [systemDeveloper.appendingPathComponent("CoreSimulator")], scope: .simulatorRuntimes, kind: .developer,
                       selectedByDefault: false),

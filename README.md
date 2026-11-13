@@ -50,8 +50,8 @@ listed with the rest and go to the Trash with it, which is what `pkgutil --forge
 **Clean** removes caches, logs, developer artifacts and installer files, each behind a rule that
 says what the files are and why they are safe to remove: app caches and logs (only for apps that
 are still installed; the rest is a leftover), Xcode's build folders, caches, device support files
-and archives, unavailable simulators, simulator runtimes older than the newest one for each
-platform, the download caches of Homebrew, npm, Yarn, pip, Swift Package Manager, CocoaPods,
+and archives, unavailable simulators, simulator runtimes whose devices all run on a newer
+runtime, the download caches of Homebrew, npm, Yarn, pip, Swift Package Manager, CocoaPods,
 Cargo, Gradle, Maven and Go, and disk images or installer packages sitting in Downloads.
 Everything is listed with its size first. Archives, device support files, runtimes and installers
 are never selected for you, and neither is the cache of an app that is running. Runtimes are
